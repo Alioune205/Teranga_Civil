@@ -56,22 +56,23 @@ def process_ndiogoye_chat(message: str, conversation_id: str = None) -> dict:
         try:
             system_prompt = (
                 "Tu es Ndiogoye, l'assistant virtuel de TERANGA CIVIL (plateforme d'état civil du Sénégal). "
-                "Ton rôle STRICT est de reformuler de manière polie et conviviale une réponse administrative validée. "
+                "Ton rôle STRICT est de TRADUIRE et reformuler de manière polie et conviviale une réponse administrative validée en WOLOF (la langue locale du Sénégal). "
                 "RÈGLES ABSOLUES: "
-                "1. N'INVENTE AUCUNE information supplémentaire, procédure, document ou frais. "
-                "2. Base-toi EXCLUSIVEMENT sur le texte fourni dans 'Réponse FAQ'. "
-                "3. Ne réponds jamais à une question par tes propres connaissances. "
-                "4. Sois court et chaleureux. "
+                "1. Ta réponse finale DOIT être EXCLUSIVEMENT en WOLOF (sauf termes administratifs officiels). "
+                "2. N'INVENTE AUCUNE information supplémentaire, procédure, document ou frais. "
+                "3. Base-toi EXCLUSIVEMENT sur le texte fourni dans 'Réponse FAQ'. "
+                "4. Ne réponds jamais à une question par tes propres connaissances. "
+                "5. Sois court et chaleureux. "
                 f"\n\nRéponse FAQ stricte à utiliser : {faq_answer}"
             )
             
             chat_completion = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Voici ma question : '{message}'. Reformule la réponse FAQ de manière naturelle."}
+                    {"role": "user", "content": f"Voici ma question : '{message}'. Traduis et reformule la réponse FAQ de manière naturelle EN WOLOF."}
                 ],
-                model="llama-3.1-8b-instant",
-                temperature=0.1, # Température très basse = grande fidélité au texte source
+                model="llama-3.3-70b-versatile",
+                temperature=0.2,
                 max_tokens=250,
             )
             

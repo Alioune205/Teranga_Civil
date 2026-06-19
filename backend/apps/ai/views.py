@@ -69,6 +69,13 @@ class NdiogoyeChatView(APIView):
                 message = "[Message vocal]"
 
             result = pipeline.process_query(message, conversation_id, user, image_base64, audio_base64)
+            
+            # On génère TOUJOURS la voix de l'assistant (pour la démo / Web)
+            if result.get("reply"):
+                from .services.tts import generate_wolof_audio_base64
+                generated_audio = generate_wolof_audio_base64(result["reply"])
+                if generated_audio:
+                    result["response_audio_base64"] = generated_audio
 
             return Response(result, status=status.HTTP_200_OK)
 
@@ -197,7 +204,7 @@ Statistiques actuelles du système ({'Globales' if request.user.role == 'super_a
         except Exception as e:
             logger.error(f"Erreur AdminAssistantQueryView: {e}")
             return Response(
-                {"error": f"Désolé, je rencontre des difficultés pour analyser les données en ce moment. Erreur technique: {str(e)}"},
+                {"error": "Désolé, je rencontre des difficultés pour analyser les données en ce moment."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
