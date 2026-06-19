@@ -1,0 +1,1854 @@
+#!/bin/bash
+# ============================================================
+# TERANGA CIVIL — Auth V2 : Inscription & Connexion redesign
+# Usage : bash fix_auth_v2.sh (depuis la racine du projet)
+# ============================================================
+set -e
+echo "🚀 TERANGA CIVIL — Auth V2 : Inscription & Connexion"
+echo ""
+
+# ════════════════════════════════════════════════════════════
+# 1. DOMAIN — UserModel mis à jour (sans PIN, sans registre)
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/domain/models/user_model.dart << 'DART'
+class UserModel {
+  final String id;
+  final String prenom;
+  final String nom;
+  final String? phone;
+  final String? email;
+  final bool isVerified;
+
+  const UserModel({
+    required this.id,
+    required this.prenom,
+    required this.nom,
+    this.phone,
+    this.email,
+    this.isVerified = false,
+  });
+
+  String get nomComplet => '$prenom $nom';
+
+  UserModel copyWith({
+    String? id,
+    String? prenom,
+    String? nom,
+    String? phone,
+    String? email,
+    bool? isVerified,
+  }) =>
+      UserModel(
+        id: id ?? this.id,
+        prenom: prenom ?? this.prenom,
+        nom: nom ?? this.nom,
+        phone: phone ?? this.phone,
+        email: email ?? this.email,
+        isVerified: isVerified ?? this.isVerified,
+      );
+}
+DART
+echo "  ✅ user_model.dart"
+
+# ════════════════════════════════════════════════════════════
+# 2. DOMAIN — Repository interface mis à jour
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/domain/repository.dart << 'DART'
+import 'models/user_model.dart';
+
+abstract class AuthRepository {
+  /// Connexion avec téléphone ou email + mot de passe
+  Future<({String token, String userId, bool needsOtp})> login({
+    required String identifier, // téléphone ou email
+    required String password,
+  });
+
+  /// Inscription simplifiée
+  Future<void> register({
+    required String prenom,
+    required String nom,
+    required String password,
+    String? phone,
+    String? email,
+  });
+
+  /// Validation OTP (SMS ou email)
+  Future<String> verifyOtp({
+    required String identifier,
+    required String code,
+  });
+
+  Future<void> resendOtp({required String identifier});
+
+  Future<UserModel> getMe();
+
+  // Stockage local
+  Future<void> saveToken(String token);
+  Future<void> saveUserId(String userId);
+  Future<void> saveIdentifier(String identifier);
+  Future<void> setLoggedOut(bool value);
+  Future<String?> getToken();
+  Future<String?> getSavedIdentifier();
+  Future<bool> hasBeenLoggedOut();
+  Future<void> logout();
+}
+DART
+echo "  ✅ auth repository.dart"
+
+# ════════════════════════════════════════════════════════════
+# 3. DOMAIN — Usecases mis à jour
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/domain/usecases/login_usecase.dart << 'DART'
+import '../repository.dart';
+
+class LoginUsecase {
+  final AuthRepository repository;
+  const LoginUsecase(this.repository);
+
+  Future<({String token, String userId, bool needsOtp})> call({
+    required String identifier,
+    required String password,
+  }) async {
+    final result = await repository.login(
+      identifier: identifier,
+      password: password,
+    );
+    await repository.saveToken(result.token);
+    await repository.saveUserId(result.userId);
+    await repository.saveIdentifier(identifier);
+    return result;
+  }
+}
+DART
+echo "  ✅ login_usecase.dart"
+
+cat > lib/features/auth/domain/usecases/register_usecase.dart << 'DART'
+import '../repository.dart';
+
+class RegisterUsecase {
+  final AuthRepository repository;
+  const RegisterUsecase(this.repository);
+
+  Future<void> call({
+    required String prenom,
+    required String nom,
+    required String password,
+    String? phone,
+    String? email,
+  }) =>
+      repository.register(
+        prenom: prenom,
+        nom: nom,
+        password: password,
+        phone: phone,
+        email: email,
+      );
+}
+DART
+echo "  ✅ register_usecase.dart"
+
+cat > lib/features/auth/domain/usecases/verify_otp_usecase.dart << 'DART'
+import '../repository.dart';
+
+class VerifyOtpUsecase {
+  final AuthRepository repository;
+  const VerifyOtpUsecase(this.repository);
+
+  Future<void> call({
+    required String identifier,
+    required String code,
+  }) async {
+    final token = await repository.verifyOtp(
+        identifier: identifier, code: code);
+    await repository.saveToken(token);
+  }
+}
+DART
+echo "  ✅ verify_otp_usecase.dart"
+
+cat > lib/features/auth/domain/usecases/resend_otp_usecase.dart << 'DART'
+import '../repository.dart';
+
+class ResendOtpUsecase {
+  final AuthRepository repository;
+  const ResendOtpUsecase(this.repository);
+
+  Future<void> call({required String identifier}) =>
+      repository.resendOtp(identifier: identifier);
+}
+DART
+echo "  ✅ resend_otp_usecase.dart"
+
+# ════════════════════════════════════════════════════════════
+# 4. DATA — Modèles
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/data/models/auth_response_model.dart << 'DART'
+import '../../domain/models/user_model.dart';
+
+class LoginResponseModel {
+  final String token;
+  final String userId;
+  final bool needsOtp;
+
+  const LoginResponseModel({
+    required this.token,
+    required this.userId,
+    required this.needsOtp,
+  });
+
+  factory LoginResponseModel.fromJson(Map<String, dynamic> json) =>
+      LoginResponseModel(
+        token: json['token'] as String? ?? '',
+        userId: json['user_id'] as String? ?? '',
+        needsOtp: json['needs_otp'] as bool? ?? false,
+      );
+}
+
+class UserResponseModel {
+  final String id;
+  final String prenom;
+  final String nom;
+  final String? phone;
+  final String? email;
+  final bool isVerified;
+
+  const UserResponseModel({
+    required this.id,
+    required this.prenom,
+    required this.nom,
+    this.phone,
+    this.email,
+    this.isVerified = false,
+  });
+
+  factory UserResponseModel.fromJson(Map<String, dynamic> json) =>
+      UserResponseModel(
+        id: json['id'] as String? ?? '',
+        prenom: json['prenom'] as String? ?? '',
+        nom: json['nom'] as String? ?? '',
+        phone: json['phone'] as String?,
+        email: json['email'] as String?,
+        isVerified: json['is_verified'] as bool? ?? false,
+      );
+
+  UserModel toDomain() => UserModel(
+        id: id,
+        prenom: prenom,
+        nom: nom,
+        phone: phone,
+        email: email,
+        isVerified: isVerified,
+      );
+}
+DART
+echo "  ✅ auth_response_model.dart"
+
+# ════════════════════════════════════════════════════════════
+# 5. DATA — Remote datasource
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/data/remote_datasource.dart << 'DART'
+import 'package:dio/dio.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/errors/exceptions.dart';
+import 'models/auth_response_model.dart';
+
+class AuthRemoteDatasource {
+  final DioClient client;
+  const AuthRemoteDatasource({required this.client});
+
+  Future<LoginResponseModel> login({
+    required String identifier,
+    required String password,
+  }) async {
+    Response? res;
+    try {
+      res = await client.post('/auth/login', data: {
+        'identifier': identifier,
+        'password': password,
+      });
+      if (res.statusCode == 401) throw const InvalidCredentialsException();
+      if (res.statusCode == 200 && res.data != null) {
+        return LoginResponseModel.fromJson(res.data as Map<String, dynamic>);
+      }
+      throw ApiException(
+          message: 'Réponse invalide', statusCode: res.statusCode);
+    } on DioException catch (e) {
+      if (e.error is UnauthorizedException || res?.statusCode == 401) {
+        throw const InvalidCredentialsException();
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> register({
+    required String prenom,
+    required String nom,
+    required String password,
+    String? phone,
+    String? email,
+  }) async {
+    final res = await client.post('/auth/register', data: {
+      'prenom': prenom,
+      'nom': nom,
+      'password': password,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+    });
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      final data = res.data;
+      final msg = data is Map<String, dynamic>
+          ? data['message'] as String? ?? 'Erreur inscription'
+          : 'Erreur inscription';
+      throw ApiException(message: msg, statusCode: res.statusCode);
+    }
+  }
+
+  Future<String> verifyOtp({
+    required String identifier,
+    required String code,
+  }) async {
+    final res = await client.post('/auth/verify-otp', data: {
+      'identifier': identifier,
+      'code': code,
+    });
+    if (res.statusCode == 200 && res.data != null) {
+      return (res.data as Map<String, dynamic>)['token'] as String? ?? '';
+    }
+    throw const InvalidOtpException();
+  }
+
+  Future<void> resendOtp({required String identifier}) async {
+    await client.post('/auth/resend-otp', data: {'identifier': identifier});
+  }
+
+  Future<UserResponseModel> getMe() async {
+    final res = await client.get('/auth/me');
+    if (res.statusCode == 200 && res.data != null) {
+      return UserResponseModel.fromJson(res.data as Map<String, dynamic>);
+    }
+    throw const UnauthorizedException();
+  }
+}
+DART
+echo "  ✅ remote_datasource.dart"
+
+# ════════════════════════════════════════════════════════════
+# 6. DATA — Local datasource
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/data/local_datasource.dart << 'DART'
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/constants/app_constants.dart';
+
+class AuthLocalDatasource {
+  final FlutterSecureStorage secureStorage;
+  const AuthLocalDatasource({required this.secureStorage});
+
+  Future<void> saveToken(String token) =>
+      secureStorage.write(key: AppConstants.keyAuthToken, value: token);
+
+  Future<void> saveUserId(String userId) =>
+      secureStorage.write(key: AppConstants.keyUserId, value: userId);
+
+  Future<void> saveIdentifier(String identifier) =>
+      secureStorage.write(key: AppConstants.keyUserPhone, value: identifier);
+
+  Future<void> setLoggedOut(bool value) => secureStorage.write(
+        key: AppConstants.keyHasBeenLoggedOut,
+        value: value.toString(),
+      );
+
+  Future<String?> getToken() =>
+      secureStorage.read(key: AppConstants.keyAuthToken);
+
+  Future<String?> getSavedIdentifier() =>
+      secureStorage.read(key: AppConstants.keyUserPhone);
+
+  Future<bool> hasBeenLoggedOut() async {
+    final val =
+        await secureStorage.read(key: AppConstants.keyHasBeenLoggedOut);
+    return val == 'true';
+  }
+
+  Future<void> clearAll() async {
+    await secureStorage.deleteAll();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(AppConstants.prefUserProfile);
+  }
+}
+DART
+echo "  ✅ local_datasource.dart"
+
+# ════════════════════════════════════════════════════════════
+# 7. DATA — Repository impl
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/data/repository_impl.dart << 'DART'
+import '../../../core/errors/exceptions.dart';
+import '../../../core/errors/failures.dart';
+import '../domain/models/user_model.dart';
+import '../domain/repository.dart';
+import 'local_datasource.dart';
+import 'remote_datasource.dart';
+
+class AuthRepositoryImpl implements AuthRepository {
+  final AuthRemoteDatasource remote;
+  final AuthLocalDatasource local;
+  const AuthRepositoryImpl({required this.remote, required this.local});
+
+  @override
+  Future<({String token, String userId, bool needsOtp})> login({
+    required String identifier,
+    required String password,
+  }) async {
+    try {
+      final res =
+          await remote.login(identifier: identifier, password: password);
+      return (token: res.token, userId: res.userId, needsOtp: res.needsOtp);
+    } on InvalidCredentialsException {
+      throw const InvalidCredentialsFailure();
+    } on TooManyAttemptsException {
+      throw const TooManyAttemptsFailure();
+    } on NetworkException {
+      throw const NetworkFailure();
+    } catch (_) {
+      throw const UnexpectedFailure();
+    }
+  }
+
+  @override
+  Future<void> register({
+    required String prenom,
+    required String nom,
+    required String password,
+    String? phone,
+    String? email,
+  }) async {
+    try {
+      await remote.register(
+        prenom: prenom,
+        nom: nom,
+        password: password,
+        phone: phone,
+        email: email,
+      );
+    } on PhoneAlreadyExistsException {
+      throw const PhoneAlreadyExistsFailure();
+    } on NetworkException {
+      throw const NetworkFailure();
+    } catch (_) {
+      throw const UnexpectedFailure();
+    }
+  }
+
+  @override
+  Future<String> verifyOtp({
+    required String identifier,
+    required String code,
+  }) async {
+    try {
+      return await remote.verifyOtp(identifier: identifier, code: code);
+    } on InvalidOtpException {
+      throw const InvalidOtpFailure();
+    } on NetworkException {
+      throw const NetworkFailure();
+    } catch (_) {
+      throw const UnexpectedFailure();
+    }
+  }
+
+  @override
+  Future<void> resendOtp({required String identifier}) async {
+    try {
+      await remote.resendOtp(identifier: identifier);
+    } on NetworkException {
+      throw const NetworkFailure();
+    } catch (_) {
+      throw const UnexpectedFailure();
+    }
+  }
+
+  @override
+  Future<UserModel> getMe() async {
+    try {
+      final res = await remote.getMe();
+      return res.toDomain();
+    } on UnauthorizedException {
+      throw const UnauthorizedFailure();
+    } catch (_) {
+      throw const UnexpectedFailure();
+    }
+  }
+
+  @override Future<void> saveToken(String t) => local.saveToken(t);
+  @override Future<void> saveUserId(String id) => local.saveUserId(id);
+  @override Future<void> saveIdentifier(String i) => local.saveIdentifier(i);
+  @override Future<void> setLoggedOut(bool v) => local.setLoggedOut(v);
+  @override Future<String?> getToken() => local.getToken();
+  @override Future<String?> getSavedIdentifier() => local.getSavedIdentifier();
+  @override Future<bool> hasBeenLoggedOut() => local.hasBeenLoggedOut();
+  @override Future<void> logout() => local.clearAll();
+}
+DART
+echo "  ✅ repository_impl.dart"
+
+# ════════════════════════════════════════════════════════════
+# 8. PROVIDER — Auth provider mis à jour
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/presentation/providers/auth_provider.dart << 'DART'
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../../core/network/dio_client.dart';
+import '../../data/local_datasource.dart';
+import '../../data/remote_datasource.dart';
+import '../../data/repository_impl.dart';
+import '../../domain/models/user_model.dart';
+import '../../domain/repository.dart';
+import '../../domain/usecases/login_usecase.dart';
+import '../../domain/usecases/register_usecase.dart';
+import '../../domain/usecases/verify_otp_usecase.dart';
+import '../../domain/usecases/resend_otp_usecase.dart';
+
+// ── Infrastructure ────────────────────────────────────────
+final _secureStorageProvider =
+    Provider<FlutterSecureStorage>((_) => const FlutterSecureStorage());
+
+final _authLocalProvider = Provider<AuthLocalDatasource>((ref) =>
+    AuthLocalDatasource(secureStorage: ref.read(_secureStorageProvider)));
+
+final _authRemoteProvider = Provider<AuthRemoteDatasource>((ref) =>
+    AuthRemoteDatasource(client: ref.read(dioClientProvider)));
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) =>
+    AuthRepositoryImpl(
+      remote: ref.read(_authRemoteProvider),
+      local: ref.read(_authLocalProvider),
+    ));
+
+// ── Usecases ──────────────────────────────────────────────
+final loginUsecaseProvider = Provider<LoginUsecase>(
+    (ref) => LoginUsecase(ref.read(authRepositoryProvider)));
+final registerUsecaseProvider = Provider<RegisterUsecase>(
+    (ref) => RegisterUsecase(ref.read(authRepositoryProvider)));
+final verifyOtpUsecaseProvider = Provider<VerifyOtpUsecase>(
+    (ref) => VerifyOtpUsecase(ref.read(authRepositoryProvider)));
+final resendOtpUsecaseProvider = Provider<ResendOtpUsecase>(
+    (ref) => ResendOtpUsecase(ref.read(authRepositoryProvider)));
+
+// ── État auth ─────────────────────────────────────────────
+class AuthState {
+  final bool isLoading;
+  final String? error;
+  final UserModel? user;
+  final bool isAuthenticated;
+
+  const AuthState({
+    this.isLoading = false,
+    this.error,
+    this.user,
+    this.isAuthenticated = false,
+  });
+
+  AuthState copyWith({
+    bool? isLoading,
+    String? error,
+    UserModel? user,
+    bool? isAuthenticated,
+    bool clearError = false,
+  }) =>
+      AuthState(
+        isLoading: isLoading ?? this.isLoading,
+        error: clearError ? null : error ?? this.error,
+        user: user ?? this.user,
+        isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      );
+}
+
+class AuthNotifier extends StateNotifier<AuthState> {
+  final LoginUsecase _login;
+  final RegisterUsecase _register;
+  final VerifyOtpUsecase _verifyOtp;
+  final ResendOtpUsecase _resendOtp;
+  final AuthRepository _repo;
+
+  AuthNotifier({
+    required LoginUsecase login,
+    required RegisterUsecase register,
+    required VerifyOtpUsecase verifyOtp,
+    required ResendOtpUsecase resendOtp,
+    required AuthRepository repo,
+  })  : _login = login,
+        _register = register,
+        _verifyOtp = verifyOtp,
+        _resendOtp = resendOtp,
+        _repo = repo,
+        super(const AuthState());
+
+  void clearError() => state = state.copyWith(clearError: true);
+
+  Future<({bool needsOtp})> login({
+    required String identifier,
+    required String password,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final result = await _login(identifier: identifier, password: password);
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: !result.needsOtp,
+      );
+      return (needsOtp: result.needsOtp);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> register({
+    required String prenom,
+    required String nom,
+    required String password,
+    String? phone,
+    String? email,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _register(
+        prenom: prenom,
+        nom: nom,
+        password: password,
+        phone: phone,
+        email: email,
+      );
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> verifyOtp({
+    required String identifier,
+    required String code,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _verifyOtp(identifier: identifier, code: code);
+      state = state.copyWith(isLoading: false, isAuthenticated: true);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> resendOtp({required String identifier}) async {
+    try {
+      await _resendOtp(identifier: identifier);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> logout() async {
+    await _repo.logout();
+    state = const AuthState();
+  }
+}
+
+final authProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) => AuthNotifier(
+          login: ref.read(loginUsecaseProvider),
+          register: ref.read(registerUsecaseProvider),
+          verifyOtp: ref.read(verifyOtpUsecaseProvider),
+          resendOtp: ref.read(resendOtpUsecaseProvider),
+          repo: ref.read(authRepositoryProvider),
+        ));
+
+// ── Données inscription en transit ────────────────────────
+class RegistrationData {
+  final String prenom;
+  final String nom;
+  final String password;
+  final String? phone;
+  final String? email;
+  final bool usePhone; // true = téléphone, false = email
+
+  const RegistrationData({
+    this.prenom = '',
+    this.nom = '',
+    this.password = '',
+    this.phone,
+    this.email,
+    this.usePhone = true,
+  });
+
+  String get identifier => usePhone ? (phone ?? '') : (email ?? '');
+
+  RegistrationData copyWith({
+    String? prenom,
+    String? nom,
+    String? password,
+    String? phone,
+    String? email,
+    bool? usePhone,
+  }) =>
+      RegistrationData(
+        prenom: prenom ?? this.prenom,
+        nom: nom ?? this.nom,
+        password: password ?? this.password,
+        phone: phone ?? this.phone,
+        email: email ?? this.email,
+        usePhone: usePhone ?? this.usePhone,
+      );
+
+  bool get isValid =>
+      prenom.trim().isNotEmpty &&
+      nom.trim().isNotEmpty &&
+      password.length >= 6 &&
+      (usePhone ? (phone?.isNotEmpty ?? false) : (email?.isNotEmpty ?? false));
+}
+
+final registrationDataProvider =
+    StateNotifierProvider<RegistrationDataNotifier, RegistrationData>(
+        (_) => RegistrationDataNotifier());
+
+class RegistrationDataNotifier extends StateNotifier<RegistrationData> {
+  RegistrationDataNotifier() : super(const RegistrationData());
+  void update(RegistrationData Function(RegistrationData) fn) =>
+      state = fn(state);
+  void reset() => state = const RegistrationData();
+}
+DART
+echo "  ✅ auth_provider.dart"
+
+# ════════════════════════════════════════════════════════════
+# 9. SCREENS — Login V2
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/presentation/screens/login_screen.dart << 'DART'
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/constants/assets_constants.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
+import '../providers/auth_provider.dart';
+
+/// S02 — Connexion (téléphone ou email + mot de passe)
+class LoginScreen extends ConsumerStatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _identifierCtr = TextEditingController();
+  final _passwordCtr = TextEditingController();
+  bool _formValid = false;
+
+  @override
+  void dispose() {
+    _identifierCtr.dispose();
+    _passwordCtr.dispose();
+    super.dispose();
+  }
+
+  void _checkValidity() {
+    setState(() {
+      _formValid = _identifierCtr.text.trim().isNotEmpty &&
+          _passwordCtr.text.length >= 6;
+    });
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    try {
+      final result = await ref.read(authProvider.notifier).login(
+            identifier: _identifierCtr.text.trim(),
+            password: _passwordCtr.text,
+          );
+      if (!mounted) return;
+      if (result.needsOtp) {
+        context.push(AppRoutes.otpVerification,
+            extra: _identifierCtr.text.trim());
+      } else {
+        context.go(AppRoutes.home);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e);
+    }
+  }
+
+  void _showError(Object e) {
+    String msg = 'Une erreur est survenue.';
+    if (e is InvalidCredentialsFailure) msg = e.message;
+    else if (e is NetworkFailure) msg = e.message;
+    else if (e is TooManyAttemptsFailure) msg = e.message;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            onChanged: _checkValidity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 32),
+                SvgPicture.asset(Assets.logoTeranga, width: 72, height: 72),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('TERANGA ', style: AppTextStyles.appNameBold),
+                    Text('CIVIL', style: AppTextStyles.appNameRegular),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(AppConstants.appTagline, style: AppTextStyles.tagline),
+                const SizedBox(height: 40),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Se connecter',
+                      style: AppTextStyles.headlineLarge),
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Utilisez votre numéro de téléphone ou email',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                // Champ identifiant (tel ou email)
+                AppTextField(
+                  label: 'Téléphone ou Email',
+                  hint: '77 123 45 67 ou nom@email.com',
+                  controller: _identifierCtr,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Ce champ est requis.';
+                    }
+                    return null;
+                  },
+                  onChanged: (_) => _checkValidity(),
+                  prefixIcon: const Icon(Icons.person_outline,
+                      color: AppColors.textSecondary, size: 20),
+                ),
+                const SizedBox(height: 16),
+                // Mot de passe
+                AppTextField(
+                  label: 'Mot de passe',
+                  hint: '••••••••',
+                  controller: _passwordCtr,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => _checkValidity(),
+                  onSubmitted: (_) => _formValid ? _submit() : null,
+                  validator: (v) {
+                    if (v == null || v.length < 6) {
+                      return 'Mot de passe trop court (6 caractères min).';
+                    }
+                    return null;
+                  },
+                  prefixIcon: const Icon(Icons.lock_outline,
+                      color: AppColors.textSecondary, size: 20),
+                ),
+                const SizedBox(height: 28),
+                PrimaryButton(
+                  label: 'Se connecter',
+                  onPressed: _submit,
+                  isLoading: isLoading,
+                  isEnabled: _formValid,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Pas encore de compte ? ',
+                        style: AppTextStyles.bodyMedium),
+                    GestureDetector(
+                      onTap: () => context.push(AppRoutes.registerStep1),
+                      child: Text("S'inscrire",
+                          style: AppTextStyles.link),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+DART
+echo "  ✅ login_screen.dart"
+
+# ════════════════════════════════════════════════════════════
+# 10. SCREEN — Inscription V2 (un seul écran)
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/presentation/screens/register_step1_screen.dart << 'DART'
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
+import '../providers/auth_provider.dart';
+
+/// S03 — Inscription : un seul écran
+/// Choix Tel/Email + Prénom + Nom + Mot de passe + Confirmation + CGU
+class RegisterStep1Screen extends ConsumerStatefulWidget {
+  const RegisterStep1Screen({super.key});
+
+  @override
+  ConsumerState<RegisterStep1Screen> createState() =>
+      _RegisterStep1ScreenState();
+}
+
+class _RegisterStep1ScreenState extends ConsumerState<RegisterStep1Screen> {
+  final _formKey = GlobalKey<FormState>();
+  final _prenomCtr = TextEditingController();
+  final _nomCtr = TextEditingController();
+  final _identifierCtr = TextEditingController();
+  final _passwordCtr = TextEditingController();
+  final _confirmCtr = TextEditingController();
+
+  bool _usePhone = true; // true = téléphone, false = email
+  bool _acceptCgu = false;
+  bool _acceptPolitique = false;
+
+  @override
+  void dispose() {
+    _prenomCtr.dispose();
+    _nomCtr.dispose();
+    _identifierCtr.dispose();
+    _passwordCtr.dispose();
+    _confirmCtr.dispose();
+    super.dispose();
+  }
+
+  bool get _isValid =>
+      _prenomCtr.text.trim().isNotEmpty &&
+      _nomCtr.text.trim().isNotEmpty &&
+      _identifierCtr.text.trim().isNotEmpty &&
+      _passwordCtr.text.length >= 6 &&
+      _confirmCtr.text == _passwordCtr.text &&
+      _acceptCgu &&
+      _acceptPolitique;
+
+  Future<void> _next() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_acceptCgu || !_acceptPolitique) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez accepter les conditions et la politique.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    // Sauvegarder les données
+    ref.read(registrationDataProvider.notifier).update((d) => d.copyWith(
+          prenom: _prenomCtr.text.trim(),
+          nom: _nomCtr.text.trim(),
+          password: _passwordCtr.text,
+          phone: _usePhone ? _identifierCtr.text.trim() : null,
+          email: !_usePhone ? _identifierCtr.text.trim() : null,
+          usePhone: _usePhone,
+        ));
+
+    // Appel API inscription
+    try {
+      await ref.read(authProvider.notifier).register(
+            prenom: _prenomCtr.text.trim(),
+            nom: _nomCtr.text.trim(),
+            password: _passwordCtr.text,
+            phone: _usePhone ? _identifierCtr.text.trim() : null,
+            email: !_usePhone ? _identifierCtr.text.trim() : null,
+          );
+      if (!mounted) return;
+      // Aller vers OTP
+      context.push(AppRoutes.registerStep3,
+          extra: {'identifier': _identifierCtr.text.trim()});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Créer mon compte'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  onChanged: () => setState(() {}),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Vos informations',
+                          style: AppTextStyles.headlineMedium),
+                      const SizedBox(height: 20),
+
+                      // ── Toggle Tel / Email ──────────────────
+                      _IdentifierToggle(
+                        usePhone: _usePhone,
+                        onChanged: (v) => setState(() {
+                          _usePhone = v;
+                          _identifierCtr.clear();
+                        }),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Champ Tel ou Email ──────────────────
+                      if (_usePhone)
+                        AppTextField(
+                          label: 'Numéro de téléphone',
+                          hint: '77 123 45 67',
+                          controller: _identifierCtr,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          validator: Validators.phone,
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 14),
+                            child: Text('+221',
+                                style: AppTextStyles.inputText.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        )
+                      else
+                        AppTextField(
+                          label: 'Adresse email',
+                          hint: 'nom@exemple.com',
+                          controller: _identifierCtr,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'L\'email est requis.';
+                            }
+                            if (!RegExp(r'^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$')
+                                .hasMatch(v.trim())) {
+                              return 'Adresse email invalide.';
+                            }
+                            return null;
+                          },
+                          prefixIcon: const Icon(Icons.email_outlined,
+                              color: AppColors.textSecondary, size: 20),
+                        ),
+                      const SizedBox(height: 16),
+
+                      // ── Prénom & Nom ────────────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppTextField(
+                              label: 'Prénom',
+                              hint: 'Amadou',
+                              controller: _prenomCtr,
+                              validator: Validators.fullName,
+                              textInputAction: TextInputAction.next,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AppTextField(
+                              label: 'Nom',
+                              hint: 'Diallo',
+                              controller: _nomCtr,
+                              validator: Validators.fullName,
+                              textInputAction: TextInputAction.next,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Mot de passe ────────────────────────
+                      AppTextField(
+                        label: 'Mot de passe',
+                        hint: '••••••••',
+                        controller: _passwordCtr,
+                        obscureText: true,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) {
+                          if (v == null || v.length < 6) {
+                            return '6 caractères minimum.';
+                          }
+                          return null;
+                        },
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: AppColors.textSecondary, size: 20),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Confirmer mot de passe ──────────────
+                      AppTextField(
+                        label: 'Confirmer le mot de passe',
+                        hint: '••••••••',
+                        controller: _confirmCtr,
+                        obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        validator: (v) {
+                          if (v != _passwordCtr.text) {
+                            return 'Les mots de passe ne correspondent pas.';
+                          }
+                          return null;
+                        },
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: AppColors.textSecondary, size: 20),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Cases CGU ───────────────────────────
+                      _CheckboxLink(
+                        value: _acceptCgu,
+                        onChanged: (v) =>
+                            setState(() => _acceptCgu = v ?? false),
+                        prefix: 'J\'accepte les ',
+                        linkText: 'conditions générales d\'utilisation',
+                        onLinkTap: () => _openUrl(
+                            'https://e-senegal.sn/#/conditions-generales-utilisation'),
+                      ),
+                      const SizedBox(height: 10),
+                      _CheckboxLink(
+                        value: _acceptPolitique,
+                        onChanged: (v) =>
+                            setState(() => _acceptPolitique = v ?? false),
+                        prefix: 'J\'accepte la ',
+                        linkText: 'politique de confidentialité',
+                        onLinkTap: () => _openUrl(
+                            'https://e-senegal.sn/#/mentions-legales'),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Bouton ────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: PrimaryButton(
+                label: 'Envoyer le code de vérification →',
+                onPressed: _next,
+                isLoading: isLoading,
+                isEnabled: _isValid,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Widget toggle Téléphone / Email ───────────────────────
+class _IdentifierToggle extends StatelessWidget {
+  final bool usePhone;
+  final void Function(bool) onChanged;
+  const _IdentifierToggle({required this.usePhone, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          _ToggleBtn(
+            label: '📱 Téléphone',
+            selected: usePhone,
+            onTap: () => onChanged(true),
+          ),
+          _ToggleBtn(
+            label: '✉️ Email',
+            selected: !usePhone,
+            onTap: () => onChanged(false),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ToggleBtn(
+      {required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.surface : AppColors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: selected
+                ? [BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  )]
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.labelMedium.copyWith(
+              color:
+                  selected ? AppColors.primary : AppColors.textSecondary,
+              fontWeight:
+                  selected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Widget checkbox avec lien cliquable ───────────────────
+class _CheckboxLink extends StatelessWidget {
+  final bool value;
+  final void Function(bool?) onChanged;
+  final String prefix;
+  final String linkText;
+  final VoidCallback onLinkTap;
+
+  const _CheckboxLink({
+    required this.value,
+    required this.onChanged,
+    required this.prefix,
+    required this.linkText,
+    required this.onLinkTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: RichText(
+              text: TextSpan(
+                style: AppTextStyles.bodySmall,
+                children: [
+                  TextSpan(text: prefix),
+                  WidgetSpan(
+                    child: GestureDetector(
+                      onTap: onLinkTap,
+                      child: Text(
+                        linkText,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.secondary,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.secondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+DART
+echo "  ✅ register_step1_screen.dart (nouveau design)"
+
+# ════════════════════════════════════════════════════════════
+# 11. SCREEN — OTP Vérification mis à jour
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/presentation/screens/register_step3_screen.dart << 'DART'
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/otp_input.dart';
+import '../providers/auth_provider.dart';
+
+/// S05 — Validation OTP (SMS ou email) → dashboard direct
+class RegisterStep3Screen extends ConsumerStatefulWidget {
+  final Map<String, dynamic> registrationData;
+  const RegisterStep3Screen({super.key, required this.registrationData});
+
+  @override
+  ConsumerState<RegisterStep3Screen> createState() =>
+      _RegisterStep3ScreenState();
+}
+
+class _RegisterStep3ScreenState
+    extends ConsumerState<RegisterStep3Screen> {
+  final _otpCtr = TextEditingController();
+  bool _otpComplete = false;
+  bool _hasError = false;
+
+  String get _identifier =>
+      widget.registrationData['identifier'] as String? ?? '';
+
+  bool get _isEmail => _identifier.contains('@');
+
+  @override
+  void dispose() {
+    _otpCtr.dispose();
+    super.dispose();
+  }
+
+  Future<void> _verify() async {
+    setState(() => _hasError = false);
+    try {
+      await ref.read(authProvider.notifier).verifyOtp(
+            identifier: _identifier,
+            code: _otpCtr.text,
+          );
+      if (!mounted) return;
+      // Nettoyer les données d'inscription
+      ref.read(registrationDataProvider.notifier).reset();
+      // Aller directement au dashboard
+      context.go(AppRoutes.home);
+    } catch (e) {
+      setState(() => _hasError = true);
+      if (!mounted) return;
+      String msg = 'Code incorrect.';
+      if (e is InvalidOtpFailure) msg = e.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  Future<void> _resend() async {
+    try {
+      await ref.read(authProvider.notifier).resendOtp(identifier: _identifier);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Code renvoyé sur ${_isEmail ? "votre email" : "votre téléphone"}.'),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+    final displayId = _isEmail
+        ? _identifier
+        : AppFormatters.phoneNumber(_identifier);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Vérification'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              // Icône selon le type
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.statusGreenLight,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    _isEmail
+                        ? Icons.email_outlined
+                        : Icons.sms_outlined,
+                    color: AppColors.secondary,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: Text('Code de vérification',
+                    style: AppTextStyles.headlineMedium),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  'Un code à 6 chiffres a été envoyé\n'
+                  '${_isEmail ? "à l\'adresse" : "au numéro"} $displayId',
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 36),
+              Center(
+                child: OtpInput(
+                  controller: _otpCtr,
+                  hasError: _hasError,
+                  onChanged: (v) => setState(() {
+                    _otpComplete = v.length == 6;
+                    if (_hasError) _hasError = false;
+                  }),
+                  onCompleted: (_) => _verify(),
+                ),
+              ),
+              if (_hasError) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: Text('Code incorrect. Veuillez réessayer.',
+                      style: AppTextStyles.inputError),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Center(child: OtpResendRow(onResend: _resend)),
+              const Spacer(),
+              PrimaryButton(
+                label: 'Valider et accéder à mon compte',
+                onPressed: _verify,
+                isLoading: isLoading,
+                isEnabled: _otpComplete,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+DART
+echo "  ✅ register_step3_screen.dart (OTP → dashboard direct)"
+
+# ════════════════════════════════════════════════════════════
+# 12. OTP Vérification reconnexion (inchangé structurellement)
+# ════════════════════════════════════════════════════════════
+cat > lib/features/auth/presentation/screens/otp_verification_screen.dart << 'DART'
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../shared/widgets/primary_button.dart';
+import '../../../../shared/widgets/otp_input.dart';
+import '../providers/auth_provider.dart';
+
+/// S02B — Vérification OTP lors de la reconnexion
+class OtpVerificationScreen extends ConsumerStatefulWidget {
+  final String phone;
+  const OtpVerificationScreen({super.key, required this.phone});
+
+  @override
+  ConsumerState<OtpVerificationScreen> createState() =>
+      _OtpVerificationScreenState();
+}
+
+class _OtpVerificationScreenState
+    extends ConsumerState<OtpVerificationScreen> {
+  final _otpCtr = TextEditingController();
+  bool _otpComplete = false;
+  bool _hasError = false;
+
+  bool get _isEmail => widget.phone.contains('@');
+
+  @override
+  void dispose() {
+    _otpCtr.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _hasError = false);
+    try {
+      await ref.read(authProvider.notifier).verifyOtp(
+            identifier: widget.phone,
+            code: _otpCtr.text,
+          );
+      if (!mounted) return;
+      context.go(AppRoutes.home);
+    } catch (e) {
+      setState(() => _hasError = true);
+      if (!mounted) return;
+      String msg = 'Code invalide.';
+      if (e is InvalidOtpFailure) msg = e.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  Future<void> _resend() async {
+    try {
+      await ref
+          .read(authProvider.notifier)
+          .resendOtp(identifier: widget.phone);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Code renvoyé avec succès.')),
+      );
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(authProvider).isLoading;
+    final display = _isEmail
+        ? widget.phone
+        : AppFormatters.phoneNumber(widget.phone);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Vérification de sécurité'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              Text('Code envoyé', style: AppTextStyles.headlineMedium),
+              const SizedBox(height: 8),
+              Text(
+                'Un code à 6 chiffres a été envoyé\n'
+                '${_isEmail ? "à l\'adresse" : "au numéro"} $display',
+                style: AppTextStyles.bodyMedium
+                    .copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 36),
+              Center(
+                child: OtpInput(
+                  controller: _otpCtr,
+                  hasError: _hasError,
+                  onChanged: (v) => setState(() {
+                    _otpComplete = v.length == 6;
+                    if (_hasError) _hasError = false;
+                  }),
+                  onCompleted: (_) => _submit(),
+                ),
+              ),
+              if (_hasError) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: Text('Code incorrect. Veuillez réessayer.',
+                      style: AppTextStyles.inputError),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Center(child: OtpResendRow(onResend: _resend)),
+              const Spacer(),
+              PrimaryButton(
+                label: 'Confirmer et accéder',
+                onPressed: _submit,
+                isLoading: isLoading,
+                isEnabled: _otpComplete,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+DART
+echo "  ✅ otp_verification_screen.dart"
+
+# ════════════════════════════════════════════════════════════
+# 13. MOCK — Mise à jour pour les nouveaux contrats
+# ════════════════════════════════════════════════════════════
+cat > lib/core/mock/mock_service.dart << 'DART'
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+
+class MockService {
+  MockService._();
+
+  static Future<void> delay([int ms = 800]) async {
+    await Future.delayed(Duration(milliseconds: ms));
+  }
+
+  static Future<Map<String, dynamic>> login({
+    required String identifier,
+    required String password,
+  }) async {
+    await delay();
+    debugPrint('[MOCK] login identifier=$identifier');
+    if (identifier.isEmpty || password.isEmpty) {
+      throw Exception('Identifiants incorrects');
+    }
+    return {
+      'token': 'mock_token_${DateTime.now().millisecondsSinceEpoch}',
+      'user_id': 'mock_user_001',
+      'needs_otp': false,
+    };
+  }
+
+  static Future<Map<String, dynamic>> register({
+    required String prenom,
+    required String nom,
+    required String password,
+    String? phone,
+    String? email,
+  }) async {
+    await delay();
+    debugPrint('[MOCK] register prenom=$prenom phone=$phone email=$email');
+    return {'success': true, 'otp_sent': true};
+  }
+
+  static Future<Map<String, dynamic>> verifyOtp({
+    required String identifier,
+    required String code,
+  }) async {
+    await delay(600);
+    debugPrint('[MOCK] verifyOtp code=$code');
+    if (code.length != 6) throw Exception('Code OTP invalide');
+    return {'token': 'mock_token_${DateTime.now().millisecondsSinceEpoch}'};
+  }
+
+  static Future<Map<String, dynamic>> resendOtp({
+    required String identifier,
+  }) async {
+    await delay(500);
+    return {'success': true};
+  }
+
+  static Future<Map<String, dynamic>> getMe() async {
+    await delay(400);
+    return {
+      'id': 'mock_user_001',
+      'prenom': 'Amadou',
+      'nom': 'Diallo',
+      'phone': '771234567',
+      'email': 'amadou@example.com',
+      'is_verified': true,
+    };
+  }
+
+  static Future<Map<String, dynamic>> submitCertificate(
+      Map<String, dynamic> payload) async {
+    await delay(1000);
+    final type = payload['type'] as String? ?? 'naissance';
+    final id =
+        'DOS-${type.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch}';
+    return {'dossier_id': id, 'status': 'soumis'};
+  }
+
+  static Future<List<Map<String, dynamic>>> getDossiers() async {
+    await delay(600);
+    return [
+      {
+        'id': 'DOS-NAISSANCE-001',
+        'type': 'naissance',
+        'status': 'en_verification',
+        'created_at':
+            DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+        'commune_nom': 'Dakar Plateau',
+        'beneficiary_nom': 'Amadou Diallo',
+        'frais': 500,
+      },
+      {
+        'id': 'DOS-MARIAGE-002',
+        'type': 'mariage',
+        'status': 'pret',
+        'created_at':
+            DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
+        'commune_nom': 'Médina',
+        'beneficiary_nom': 'Oumar Diop & Aïssatou Fall',
+        'frais': 1000,
+      },
+      {
+        'id': 'DOS-DECES-003',
+        'type': 'deces',
+        'status': 'soumis',
+        'created_at':
+            DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
+        'commune_nom': 'Pikine Est',
+        'beneficiary_nom': 'Mamadou Ba',
+        'frais': 500,
+      },
+    ];
+  }
+
+  static Future<Map<String, dynamic>> getDossierById(String id) async {
+    await delay(400);
+    final all = await getDossiers();
+    return all.firstWhere((d) => d['id'] == id, orElse: () => all.first);
+  }
+
+  static Future<Map<String, dynamic>> initiatePayment({
+    required String dossierId,
+    required String method,
+    required String phone,
+  }) async {
+    await delay(1200);
+    return {
+      'success': true,
+      'receipt': 'REC-${DateTime.now().millisecondsSinceEpoch}',
+      'transaction_id': 'TXN-${DateTime.now().millisecondsSinceEpoch}',
+    };
+  }
+
+  static Future<Map<String, dynamic>> updateProfile(
+      Map<String, dynamic> data) async {
+    await delay(600);
+    final base = await getMe();
+    return {...base, ...data};
+  }
+
+  static Future<void> changePin({
+    required String oldPinHash,
+    required String newPin,
+  }) async {
+    await delay(600);
+  }
+
+  static Future<Map<String, dynamic>> sendAssistantMessage({
+    required String message,
+    required String language,
+  }) async {
+    await delay(1000);
+    final msg = message.toLowerCase();
+    final responses =
+        language == 'fr' ? _frResponses : _woResponses;
+    if (msg.contains('naissance')) return {'response': responses['naissance']!};
+    if (msg.contains('mariage')) return {'response': responses['mariage']!};
+    if (msg.contains('décès') || msg.contains('deces')) {
+      return {'response': responses['deces']!};
+    }
+    if (msg.contains('dossier') || msg.contains('suiv')) {
+      return {'response': responses['dossier']!};
+    }
+    if (msg.contains('frais') || msg.contains('prix')) {
+      return {'response': responses['frais']!};
+    }
+    return {'response': responses['default']!};
+  }
+
+  static const _frResponses = {
+    'naissance': 'Pour un certificat de naissance : accueil → Certificat de naissance → choisissez le bénéficiaire → confirmez → payez 500 FCFA. Délai : 3 jours ouvrés.',
+    'mariage': 'Pour un certificat de mariage : accueil → Certificat de mariage → renseignez les informations → payez 1 000 FCFA. Délai : 5 jours ouvrés.',
+    'deces': 'Pour un certificat de décès : accueil → Certificat de décès → renseignez les informations → payez 500 FCFA. Délai : 3 jours ouvrés.',
+    'dossier': 'Suivez vos dossiers dans l\'onglet "Dossiers" en bas. Statuts : Soumis → En vérification → Validé → Prêt.',
+    'frais': 'Frais : Naissance 500 FCFA • Décès 500 FCFA • Mariage 1 000 FCFA. Paiement : Wave, Orange Money, Free Money.',
+    'default': 'Bonjour ! Je suis l\'assistant TERANGA CIVIL. Comment puis-je vous aider avec vos certificats d\'état civil ?',
+  };
+
+  static const _woResponses = {
+    'naissance': 'Certificat bu naissance : accueil → tëral Naissance → tann boo bëgg → jëfandiku 500 FCFA. Délai : 3 fan.',
+    'mariage': 'Certificat bu mariage : accueil → tëral Mariage → bind yëf yi → jëfandiku 1 000 FCFA. Délai : 5 fan.',
+    'deces': 'Certificat bu décès : accueil → tëral Décès → bind yëf yi → jëfandiku 500 FCFA. Délai : 3 fan.',
+    'dossier': 'Xool sa dossiers ci onglet "Dossiers". Statuts : Soumis → Vérification → Validé → Prêt.',
+    'frais': 'Jëfandiku : Naissance 500 FCFA • Décès 500 FCFA • Mariage 1 000 FCFA.',
+    'default': 'Mangi fi ! Maa ngi Assistant TERANGA CIVIL. Lan laa mëna def ngir yëngël ci kanam ?',
+  };
+}
+DART
+echo "  ✅ mock_service.dart mis à jour"
+
+# ════════════════════════════════════════════════════════════
+# 14. MOCK INTERCEPTOR — mis à jour pour nouveaux endpoints
+# ═════════════════════════════�

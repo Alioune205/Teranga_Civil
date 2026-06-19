@@ -1,0 +1,356 @@
+{
+  "regions": [
+    {
+      "id": "DK",
+      "nom": "Dakar",
+      "departements": [
+        {
+          "id": "DK-DK",
+          "nom": "Dakar",
+          "communes": [
+            { "id": "DK-DK-01", "nom": "Dakar Plateau" },
+            { "id": "DK-DK-02", "nom": "Médina" },
+            { "id": "DK-DK-03", "nom": "Grand Dakar" },
+            { "id": "DK-DK-04", "nom": "Biscuiterie" },
+            { "id": "DK-DK-05", "nom": "Gueule Tapée-Fass-Colobane" },
+            { "id": "DK-DK-06", "nom": "HLM" },
+            { "id": "DK-DK-07", "nom": "Parcelles Assainies" },
+            { "id": "DK-DK-08", "nom": "Pape Djily Mbaye" },
+            { "id": "DK-DK-09", "nom": "Point E" },
+            { "id": "DK-DK-10", "nom": "Sicap Liberté" }
+          ]
+        },
+        {
+          "id": "DK-GU",
+          "nom": "Guédiawaye",
+          "communes": [
+            { "id": "DK-GU-01", "nom": "Guédiawaye" },
+            { "id": "DK-GU-02", "nom": "Golf Sud" },
+            { "id": "DK-GU-03", "nom": "Médina Gounass" },
+            { "id": "DK-GU-04", "nom": "Ndiarème Limamoulaye" },
+            { "id": "DK-GU-05", "nom": "Sam Notaire" }
+          ]
+        },
+        {
+          "id": "DK-PI",
+          "nom": "Pikine",
+          "communes": [
+            { "id": "DK-PI-01", "nom": "Pikine Est" },
+            { "id": "DK-PI-02", "nom": "Pikine Nord" },
+            { "id": "DK-PI-03", "nom": "Pikine Ouest" },
+            { "id": "DK-PI-04", "nom": "Dalifort" },
+            { "id": "DK-PI-05", "nom": "Djida Thiaroye Kao" },
+            { "id": "DK-PI-06", "nom": "Guinaw Rails Nord" },
+            { "id": "DK-PI-07", "nom": "Guinaw Rails Sud" },
+            { "id": "DK-PI-08", "nom": "Thiaroye sur Mer" },
+            { "id": "DK-PI-09", "nom": "Tivaouane Diacksao" },
+            { "id": "DK-PI-10", "nom": "Yeumbeul Nord" },
+            { "id": "DK-PI-11", "nom": "Yeumbeul Sud" }
+          ]
+        },
+        {
+          "id": "DK-RU",
+          "nom": "Rufisque",
+          "communes": [
+            { "id": "DK-RU-01", "nom": "Rufisque Est" },
+            { "id": "DK-RU-02", "nom": "Rufisque Nord" },
+            { "id": "DK-RU-03", "nom": "Rufisque Ouest" },
+            { "id": "DK-RU-04", "nom": "Bargny" },
+            { "id": "DK-RU-05", "nom": "Diamniadio" },
+            { "id": "DK-RU-06", "nom": "Sangalkam" },
+            { "id": "DK-RU-07", "nom": "Sebikhotane" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TH",
+      "nom": "Thiès",
+      "departements": [
+        {
+          "id": "TH-TH",
+          "nom": "Thiès",
+          "communes": [
+            { "id": "TH-TH-01", "nom": "Thiès Est" },
+            { "id": "TH-TH-02", "nom": "Thiès Nord" },
+            { "id": "TH-TH-03", "nom": "Thiès Ouest" },
+            { "id": "TH-TH-04", "nom": "Fandène" },
+            { "id": "TH-TH-05", "nom": "Keur Mousseu" },
+            { "id": "TH-TH-06", "nom": "Notto Gouye Diama" }
+          ]
+        },
+        {
+          "id": "TH-TI",
+          "nom": "Tivaouane",
+          "communes": [
+            { "id": "TH-TI-01", "nom": "Tivaouane" },
+            { "id": "TH-TI-02", "nom": "Méouane" },
+            { "id": "TH-TI-03", "nom": "Mérina Dakhar" },
+            { "id": "TH-TI-04", "nom": "Ngourane" }
+          ]
+        },
+        {
+          "id": "TH-MB",
+          "nom": "Mbour",
+          "communes": [
+            { "id": "TH-MB-01", "nom": "Mbour" },
+            { "id": "TH-MB-02", "nom": "Joal-Fadiouth" },
+            { "id": "TH-MB-03", "nom": "Ngaparou" },
+            { "id": "TH-MB-04", "nom": "Saly Portudal" },
+            { "id": "TH-MB-05", "nom": "Somone" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SL",
+      "nom": "Saint-Louis",
+      "departements": [
+        {
+          "id": "SL-SL",
+          "nom": "Saint-Louis",
+          "communes": [
+            { "id": "SL-SL-01", "nom": "Saint-Louis" },
+            { "id": "SL-SL-02", "nom": "Rao" },
+            { "id": "SL-SL-03", "nom": "Gandon" }
+          ]
+        },
+        {
+          "id": "SL-PO",
+          "nom": "Podor",
+          "communes": [
+            { "id": "SL-PO-01", "nom": "Podor" },
+            { "id": "SL-PO-02", "nom": "Ndioum" },
+            { "id": "SL-PO-03", "nom": "Gamadji Saré" }
+          ]
+        },
+        {
+          "id": "SL-DA",
+          "nom": "Dagana",
+          "communes": [
+            { "id": "SL-DA-01", "nom": "Dagana" },
+            { "id": "SL-DA-02", "nom": "Richard-Toll" },
+            { "id": "SL-DA-03", "nom": "Rosso-Sénégal" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ZG",
+      "nom": "Ziguinchor",
+      "departements": [
+        {
+          "id": "ZG-ZG",
+          "nom": "Ziguinchor",
+          "communes": [
+            { "id": "ZG-ZG-01", "nom": "Ziguinchor" },
+            { "id": "ZG-ZG-02", "nom": "Niaguis" },
+            { "id": "ZG-ZG-03", "nom": "Boutoupa Camaracounda" }
+          ]
+        },
+        {
+          "id": "ZG-OZ",
+          "nom": "Oussouye",
+          "communes": [
+            { "id": "ZG-OZ-01", "nom": "Oussouye" },
+            { "id": "ZG-OZ-02", "nom": "Mlomp" }
+          ]
+        },
+        {
+          "id": "ZG-BG",
+          "nom": "Bignona",
+          "communes": [
+            { "id": "ZG-BG-01", "nom": "Bignona" },
+            { "id": "ZG-BG-02", "nom": "Diouloulou" },
+            { "id": "ZG-BG-03", "nom": "Kafountine" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "KL",
+      "nom": "Kaolack",
+      "departements": [
+        {
+          "id": "KL-KL",
+          "nom": "Kaolack",
+          "communes": [
+            { "id": "KL-KL-01", "nom": "Kaolack" },
+            { "id": "KL-KL-02", "nom": "Ndoffane" },
+            { "id": "KL-KL-03", "nom": "Ngathie Naoudé" }
+          ]
+        },
+        {
+          "id": "KL-KB",
+          "nom": "Kaffrine",
+          "communes": [
+            { "id": "KL-KB-01", "nom": "Kaffrine" },
+            { "id": "KL-KB-02", "nom": "Birkelane" },
+            { "id": "KL-KB-03", "nom": "Koungheul" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "KD",
+      "nom": "Kolda",
+      "departements": [
+        {
+          "id": "KD-KD",
+          "nom": "Kolda",
+          "communes": [
+            { "id": "KD-KD-01", "nom": "Kolda" },
+            { "id": "KD-KD-02", "nom": "Saré Yoro Bana" }
+          ]
+        },
+        {
+          "id": "KD-VE",
+          "nom": "Vélingara",
+          "communes": [
+            { "id": "KD-VE-01", "nom": "Vélingara" },
+            { "id": "KD-VE-02", "nom": "Pakour" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "LG",
+      "nom": "Louga",
+      "departements": [
+        {
+          "id": "LG-LG",
+          "nom": "Louga",
+          "communes": [
+            { "id": "LG-LG-01", "nom": "Louga" },
+            { "id": "LG-LG-02", "nom": "Darou Mousty" },
+            { "id": "LG-LG-03", "nom": "Linguère" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FK",
+      "nom": "Fatick",
+      "departements": [
+        {
+          "id": "FK-FK",
+          "nom": "Fatick",
+          "communes": [
+            { "id": "FK-FK-01", "nom": "Fatick" },
+            { "id": "FK-FK-02", "nom": "Diakhao" },
+            { "id": "FK-FK-03", "nom": "Sokone" }
+          ]
+        },
+        {
+          "id": "FK-FD",
+          "nom": "Foundiougne",
+          "communes": [
+            { "id": "FK-FD-01", "nom": "Foundiougne" },
+            { "id": "FK-FD-02", "nom": "Toubacouta" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TB",
+      "nom": "Tambacounda",
+      "departements": [
+        {
+          "id": "TB-TB",
+          "nom": "Tambacounda",
+          "communes": [
+            { "id": "TB-TB-01", "nom": "Tambacounda" },
+            { "id": "TB-TB-02", "nom": "Gouloumbou" }
+          ]
+        },
+        {
+          "id": "TB-KD",
+          "nom": "Kédougou",
+          "communes": [
+            { "id": "TB-KD-01", "nom": "Kédougou" },
+            { "id": "TB-KD-02", "nom": "Saraya" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DI",
+      "nom": "Diourbel",
+      "departements": [
+        {
+          "id": "DI-DI",
+          "nom": "Diourbel",
+          "communes": [
+            { "id": "DI-DI-01", "nom": "Diourbel" }
+          ]
+        },
+        {
+          "id": "DI-TO",
+          "nom": "Touba",
+          "communes": [
+            { "id": "DI-TO-01", "nom": "Touba" },
+            { "id": "DI-TO-02", "nom": "Mbacké" }
+          ]
+        },
+        {
+          "id": "DI-BA",
+          "nom": "Bambey",
+          "communes": [
+            { "id": "DI-BA-01", "nom": "Bambey" },
+            { "id": "DI-BA-02", "nom": "Ngoye" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MT",
+      "nom": "Matam",
+      "departements": [
+        {
+          "id": "MT-MT",
+          "nom": "Matam",
+          "communes": [
+            { "id": "MT-MT-01", "nom": "Matam" },
+            { "id": "MT-MT-02", "nom": "Agnam Civol" }
+          ]
+        },
+        {
+          "id": "MT-KA",
+          "nom": "Kanel",
+          "communes": [
+            { "id": "MT-KA-01", "nom": "Kanel" },
+            { "id": "MT-KA-02", "nom": "Ourossogui" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SD",
+      "nom": "Sédhiou",
+      "departements": [
+        {
+          "id": "SD-SD",
+          "nom": "Sédhiou",
+          "communes": [
+            { "id": "SD-SD-01", "nom": "Sédhiou" },
+            { "id": "SD-SD-02", "nom": "Bambaly" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "KF",
+      "nom": "Kaffrine",
+      "departements": [
+        {
+          "id": "KF-KF",
+          "nom": "Kaffrine",
+          "communes": [
+            { "id": "KF-KF-01", "nom": "Kaffrine" },
+            { "id": "KF-KF-02", "nom": "Nganda" }
+          ]
+        }
+      ]
+    }
+  ]
+}

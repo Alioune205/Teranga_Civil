@@ -1,0 +1,103 @@
+name: teranga_civil
+description: "TERANGA CIVIL — L'administration proche de vous. Application civique sénégalaise pour les demandes de certificats d'état civil."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^13.0.0
+  crypto: ^3.0.3
+
+  # HTTP
+  dio: ^5.4.0
+
+  # Stockage sécurisé
+  flutter_secure_storage: ^9.0.0
+
+  # Préférences locales
+  shared_preferences: ^2.2.2
+
+  # OTP input
+  pin_code_fields: ^8.0.1
+
+  # Image picker (CNI scan)
+  image_picker: ^1.0.7
+
+  # Reconnaissance vocale (dictée dans le chat Ndiogoye)
+  # 7.x : compatible embedding v2 (la 6.x utilisait l'API Registrar supprimée,
+  # ce qui cassait la compilation Android).
+  speech_to_text: ^7.0.0
+
+  # Animations Lottie
+  lottie: ^3.0.0
+
+  # Google Fonts (Poppins uniquement)
+  google_fonts: ^6.1.0
+
+  # Internationalisation (dates, montants)
+  intl: ^0.20.2
+
+  # SVG
+  flutter_svg: ^2.0.9
+
+  # Cache images réseau
+  cached_network_image: ^3.3.1
+
+  # Connectivité réseau
+  connectivity_plus: ^5.0.2
+
+  # Dossiers système (download PDF)
+  path_provider: ^2.1.2
+
+  # Ouvrir le PDF téléchargé dans le lecteur du téléphone
+  open_filex: ^4.5.0
+
+  # Ouvrir URLs externes (CGU, politique)
+  url_launcher: ^6.2.5
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Mocks pour tests
+  mocktail: ^1.0.3
+
+  # Générateur de code Riverpod
+  riverpod_generator: ^2.4.0
+  build_runner: ^2.4.8
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/lottie/
+    - assets/data/
+    - assets/fonts/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
