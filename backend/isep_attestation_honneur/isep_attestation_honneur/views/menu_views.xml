@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Menu principal -->
+    <menuitem
+        id="menu_isep_root"
+        name="ISEP - Attestations"
+        sequence="100"
+        web_icon="isep_attestation_honneur,static/description/isep_logo.png"/>
+
+    <!-- Sous-menu -->
+    <menuitem
+        id="menu_isep_attestation"
+        name="Attestations sur l'Honneur"
+        parent="menu_isep_root"
+        action="action_attestation_honneur"
+        sequence="10"/>
+
+</odoo>

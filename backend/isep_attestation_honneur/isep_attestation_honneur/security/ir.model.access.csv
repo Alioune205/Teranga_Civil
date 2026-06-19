@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_isep_attestation_user,isep.attestation.honneur user,model_isep_attestation_honneur,base.group_user,1,1,1,0
+access_isep_attestation_manager,isep.attestation.honneur manager,model_isep_attestation_honneur,base.group_system,1,1,1,1

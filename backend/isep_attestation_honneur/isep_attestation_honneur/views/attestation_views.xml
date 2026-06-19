@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vue liste -->
+    <record id="view_attestation_honneur_tree" model="ir.ui.view">
+        <field name="name">isep.attestation.honneur.tree</field>
+        <field name="model">isep.attestation.honneur</field>
+        <field name="arch" type="xml">
+            <tree string="Attestations sur l'Honneur" decoration-success="state=='valide'" decoration-muted="state=='annule'">
+                <field name="name"/>
+                <field name="civilite"/>
+                <field name="nom"/>
+                <field name="prenom"/>
+                <field name="nationalite"/>
+                <field name="date_signature"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'valide'"
+                       decoration-warning="state == 'brouillon'"
+                       decoration-danger="state == 'annule'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vue formulaire -->
+    <record id="view_attestation_honneur_form" model="ir.ui.view">
+        <field name="name">isep.attestation.honneur.form</field>
+        <field name="model">isep.attestation.honneur</field>
+        <field name="arch" type="xml">
+            <form string="Attestation sur l'Honneur">
+                <header>
+                    <button name="action_valider" string="Valider" type="object"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', 'in', ['valide', 'annule'])]}"/>
+                    <button name="action_imprimer" string="Imprimer / PDF" type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '!=', 'valide')]}"/>
+                    <button name="action_annuler" string="Annuler" type="object"
+                            attrs="{'invisible': [('state', 'in', ['annule'])]}"/>
+                    <button name="action_brouillon" string="Remettre en brouillon" type="object"
+                            attrs="{'invisible': [('state', '!=', 'annule')]}"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="brouillon,valide"/>
+                </header>
+
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group string="Identite du Candidat">
+                        <group>
+                            <field name="civilite" required="1"/>
+                            <field name="nom" required="1" placeholder="NOM (en majuscules)"/>
+                            <field name="prenom" required="1" placeholder="Prenom"/>
+                        </group>
+                        <group>
+                            <field name="date_naissance" required="1"/>
+                            <field name="nationalite" required="1" placeholder="ex: SENEGALAISE"/>
+                        </group>
+                    </group>
+
+                    <group string="Declarations sur l'Honneur">
+                        <field name="decl_non_nationalite_francaise"
+                               string="Je declare ne pas posseder la nationalite francaise (en cas de double nationalite, c'est la nationalite francaise qui sera prise en compte)"/>
+                        <field name="decl_non_naturalisation"
+                               string="Je declare ne pas avoir une demande de naturalisation en cours"/>
+                        <field name="decl_non_presentation_concours"
+                               string="Je declare ne m'etre jamais presente au concours d'admission"/>
+                    </group>
+
+                    <group string="Signature">
+                        <group>
+                            <field name="lieu_signature" required="1"/>
+                            <field name="date_signature" required="1"/>
+                        </group>
+                        <group>
+                            <field name="date_creation" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue recherche -->
+    <record id="view_attestation_honneur_search" model="ir.ui.view">
+        <field name="name">isep.attestation.honneur.search</field>
+        <field name="model">isep.attestation.honneur</field>
+        <field name="arch" type="xml">
+            <search string="Rechercher une attestation">
+                <field name="name" string="Reference"/>
+                <field name="nom" string="Nom"/>
+                <field name="prenom" string="Prenom"/>
+                <field name="nationalite"/>
+                <separator/>
+                <filter name="brouillon" string="Brouillon" domain="[('state','=','brouillon')]"/>
+                <filter name="valide" string="Valide" domain="[('state','=','valide')]"/>
+                <filter name="annule" string="Annule" domain="[('state','=','annule')]"/>
+                <group expand="0" string="Grouper par">
+                    <filter name="group_state" string="Statut" context="{'group_by': 'state'}"/>
+                    <filter name="group_nationalite" string="Nationalite" context="{'group_by': 'nationalite'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_attestation_honneur" model="ir.actions.act_window">
+        <field name="name">Attestations sur l'Honneur</field>
+        <field name="res_model">isep.attestation.honneur</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_attestation_honneur_search"/>
+        <field name="context">{'search_default_brouillon': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Créer une nouvelle attestation sur l'honneur
+            </p>
+            <p>
+                Saisissez les informations du candidat pour générer
+                une attestation sur l'honneur officielle ISEP.
+            </p>
+        </field>
+    </record>
+
+    <!-- Séquence -->
+    <record id="seq_attestation_honneur" model="ir.sequence">
+        <field name="name">Attestation sur l'Honneur ISEP</field>
+        <field name="code">isep.attestation.honneur</field>
+        <field name="prefix">ISEP/ATT/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+</odoo>

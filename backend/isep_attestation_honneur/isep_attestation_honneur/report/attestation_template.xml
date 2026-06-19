@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="report_attestation_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <t t-set="o" t-value="o.with_context(lang=o.env.context.get('lang', 'fr_FR'))"/>
+                    <div class="page" style="font-family: Arial, sans-serif; font-size: 11pt; color: #000000;">
+
+                        <!-- EN-TETE avec logo ISEP -->
+                        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #8B4513; padding-bottom: 20px;">
+                            <img t-att-src="'/isep_attestation_honneur/static/description/isep_logo.png'"
+                                 style="height: 80px; margin-bottom: 10px;"/>
+                            <div style="font-size: 9pt; color: #555555; margin-top: 5px;">
+                                ISEP Amadou Traware
+                            </div>
+                        </div>
+
+                        <!-- TITRE -->
+                        <div style="background-color: #1F4E79; color: #FFFFFF; text-align: center; padding: 10px; font-size: 13pt; font-weight: bold; margin-bottom: 30px; letter-spacing: 1px;">
+                            ATTESTATION SUR L'HONNEUR
+                        </div>
+
+                        <!-- INTRODUCTION -->
+                        <p style="margin-bottom: 25px;">
+                            <strong>Je soussigné(e) :</strong>
+                        </p>
+
+                        <!-- TABLEAU DES INFORMATIONS -->
+                        <table style="width: 100%; margin-bottom: 30px; border-collapse: collapse;">
+                            <tr>
+                                <td style="width: 35%; padding: 8px 5px; font-weight: bold; vertical-align: top;">Civilité (M. ou Mme)</td>
+                                <td style="width: 65%; padding: 8px 5px; border-bottom: 1px solid #CCCCCC;">
+                                    <t t-esc="o.civilite"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 5px; font-weight: bold; vertical-align: top;">Nom</td>
+                                <td style="padding: 8px 5px; border-bottom: 1px solid #CCCCCC;">
+                                    <strong><t t-esc="o.nom.upper()"/></strong>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 5px; font-weight: bold; vertical-align: top;">Prénom</td>
+                                <td style="padding: 8px 5px; border-bottom: 1px solid #CCCCCC;">
+                                    <t t-esc="o.prenom.upper()"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 5px; font-weight: bold; vertical-align: top;">Date de naissance<br/>(JJ/MM/AAAA)</td>
+                                <td style="padding: 8px 5px; border-bottom: 1px solid #CCCCCC;">
+                                    <t t-esc="o.date_naissance.strftime('%d/%m/%Y') if o.date_naissance else ''"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 5px; font-weight: bold; vertical-align: top;">Nationalité(s)</td>
+                                <td style="padding: 8px 5px; border-bottom: 1px solid #CCCCCC;">
+                                    <t t-esc="o.nationalite.upper()"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- DECLARATIONS -->
+                        <p style="margin-bottom: 15px;">
+                            <strong>Je déclare sur l'honneur :</strong>
+                        </p>
+
+                        <ol style="margin-bottom: 30px; line-height: 1.8;">
+                            <li style="margin-bottom: 10px;">
+                                Ne pas posséder la nationalité française - en cas de double nationalité, c'est la nationalité française qui sera prise en compte. *
+                            </li>
+                            <li style="margin-bottom: 10px;">
+                                Ne pas avoir une demande de naturalisation en cours
+                            </li>
+                            <li style="margin-bottom: 10px;">
+                                Ne m'être jamais présenté(e) au concours d'admission de l'ISEP Amadou Traware.
+                            </li>
+                        </ol>
+
+                        <!-- CERTIFICATION -->
+                        <p style="margin-bottom: 40px;">
+                            Je certifie que toutes les informations données dans mon dossier de candidature sont exactes et complètes.
+                        </p>
+
+                        <!-- SIGNATURE -->
+                        <div style="margin-top: 40px;">
+                            <p>
+                                Fait à <strong><t t-esc="o.lieu_signature"/></strong>,
+                                le <strong><t t-esc="o.date_signature.strftime('%d/%m/%Y') if o.date_signature else ''"/></strong>
+                            </p>
+                            <br/>
+                            <p style="font-style: italic; color: #666666; font-size: 9pt;">
+                                * Cochez la case correspondante - Signature manuscrite obligatoire
+                            </p>
+                            <div style="margin-top: 50px; text-align: right;">
+                                <div style="border-top: 1px solid #000000; width: 200px; display: inline-block; text-align: center; padding-top: 5px;">
+                                    Signature du candidat
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PIED DE PAGE -->
+                        <div style="margin-top: 60px; border-top: 1px solid #CCCCCC; padding-top: 10px; text-align: center; font-size: 8pt; color: #666666;">
+                            <strong>DIRECTION DES ADMISSIONS</strong><br/>
+                            ISEP Amadou Traware - Dakar, Sénégal
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

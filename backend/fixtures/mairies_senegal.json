@@ -1,0 +1,77 @@
+[
+  {
+    "model": "communes.mairie",
+    "pk": 1,
+    "fields": {
+      "nom": "Mairie de Dakar Plateau",
+      "commune": 1,
+      "adresse": "Avenue Léopold Sédar Senghor, Dakar",
+      "latitude": "14.693425",
+      "longitude": "-17.447938",
+      "telephone": "+221 33 849 75 75",
+      "email": "contact@mairiedakar.sn",
+      "horaires": "Lun-Ven 08h00-17h00",
+      "est_active": true
+    }
+  },
+  {
+    "model": "communes.mairie",
+    "pk": 2,
+    "fields": {
+      "nom": "Mairie de Pikine",
+      "commune": 2,
+      "adresse": "Pikine, Dakar",
+      "latitude": "14.746000",
+      "longitude": "-17.390000",
+      "telephone": "+221 33 834 11 00",
+      "email": "",
+      "horaires": "Lun-Ven 08h00-17h00",
+      "est_active": true
+    }
+  },
+  {
+    "model": "communes.mairie",
+    "pk": 3,
+    "fields": {
+      "nom": "Mairie de Guédiawaye",
+      "commune": 3,
+      "adresse": "Guédiawaye, Dakar",
+      "latitude": "14.770000",
+      "longitude": "-17.390000",
+      "telephone": "+221 33 835 50 00",
+      "email": "",
+      "horaires": "Lun-Ven 08h00-17h00",
+      "est_active": true
+    }
+  },
+  {
+    "model": "communes.mairie",
+    "pk": 4,
+    "fields": {
+      "nom": "Mairie de Thiès",
+      "commune": 4,
+      "adresse": "Avenue Malick Sy, Thiès",
+      "latitude": "14.791667",
+      "longitude": "-16.925000",
+      "telephone": "+221 33 951 10 15",
+      "email": "",
+      "horaires": "Lun-Ven 08h00-17h00",
+      "est_active": true
+    }
+  },
+  {
+    "model": "communes.mairie",
+    "pk": 5,
+    "fields": {
+      "nom": "Mairie de Rufisque",
+      "commune": 5,
+      "adresse": "Rufisque, Dakar",
+      "latitude": "14.716700",
+      "longitude": "-17.266700",
+      "telephone": "+221 33 836 10 00",
+      "email": "",
+      "horaires": "Lun-Ven 08h00-17h00",
+      "est_active": true
+    }
+  }
+]

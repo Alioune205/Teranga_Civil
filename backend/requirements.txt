@@ -1,0 +1,56 @@
+# Django Core
+Django>=4.2,<4.3
+djangorestframework>=3.15,<3.16
+# Authentication
+djangorestframework-simplejwt>=5.3,<5.4
+# API Documentation
+drf-spectacular>=0.28,<0.29
+# Filtering
+django-filter>=24.0,<25.0
+# Security & CORS
+django-cors-headers>=4.4,<4.5
+# Database
+psycopg2-binary>=2.9,<2.10
+# Environment Variables
+python-decouple>=3.8,<3.9
+python-dotenv>=1.0.0
+requests>=2.31.0
+# Image Processing & OCR
+Pillow>=10.0,<11.0
+easyocr>=1.7.0
+pypdfium2>=4.0.0
+# AI APIs & Ndiogoye
+groq>=0.9.0
+rapidfuzz>=3.0.0
+# Production Server
+gunicorn>=22.0,<23.0
+# PDF & QR Code (DEV 1B)
+reportlab>=4.0,<5.0
+qrcode>=7.4,<8.0
+# Firebase Cloud Messaging (DEV 1C)
+firebase-admin>=6.5.0,<7.0.0
+# System Monitoring
+psutil>=5.9.0,<6.0.0
+# Email & SMS Integrations (DEV 2B)
+twilio>=9.0.0,<10.0.0
+sendgrid>=6.11.0,<7.0.0
+# WebSockets, ASGI, & Real-time (DEV 2B & HEAD)
+channels>=4.0.0,<5.0.0
+daphne>=4.0.0,<5.0.0
+channels-redis>=4.2.0,<5.0.0
+# Caching & Redis
+redis>=5.0.0,<6.0.0
+django-redis>=5.4.0,<6.0.0
+# Task Queue (Async & Scheduled Jobs)
+celery>=5.4.0,<6.0.0
+django-celery-beat>=2.7.0,<3.0.0
+django-celery-results>=2.5.0,<3.0.0
+# AI Chatbot (DEV 1A)
+groq>=0.4.2
+# Admin UI Theme
+django-unfold>=0.43.0
+langchain-community>=0.2.0
+langchain-huggingface>=0.0.3
+chromadb>=0.4.24
+sentence-transformers>=2.2.2
+google-genai>=0.1.0
