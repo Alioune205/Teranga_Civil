@@ -111,6 +111,22 @@ class Dossier(TimeStampedModel):
         blank=True,
         verbose_name='Date de complétion',
     )
+    statut = models.CharField(max_length=20, choices=[
+        ('EN_ATTENTE', 'En attente'),
+        ('EN_COURS', 'En cours'),
+        ('EN_APPROBATION', 'Soumis au Maire'),
+        ('APPROUVE', 'Approuvé'),
+        ('REJETE', 'Rejeté'),
+    ], default='EN_ATTENTE')
+    agent_traitant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='dossiers_traites',
+        limit_choices_to={'role': 'agent'}
+    )
+    date_soumission_maire = models.DateTimeField(null=True, blank=True)
+    decision_maire = models.TextField(blank=True, default='')
+    date_decision = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Dossier'

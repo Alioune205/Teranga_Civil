@@ -5,8 +5,11 @@ from django.utils import timezone
 
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from apps.notifications.models import Notification
+from .permissions import IsAgent, IsMaire
 
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
 
@@ -620,3 +623,66 @@ class DossierViewSet(viewsets.ModelViewSet):
             status_code=status.HTTP_201_CREATED,
         )
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAgent])
+def agent_soumettre_au_maire(request, dossier_id):
+    dossier = get_object_or_404(Dossier, id=dossier_id)
+    if dossier.agent_traitant != request.user:
+        return Response({'error': 'Ce dossier ne vous est pas assigné.'}, status=403)
+    if dossier.statut not in ['EN_COURS', 'EN_ATTENTE']:
+        return Response({'error': f'Statut actuel ({dossier.statut}) invalide pour cette action.'}, status=400)
+    dossier.statut = 'EN_APPROBATION'
+    dossier.date_soumission_maire = timezone.now()
+    dossier.save(update_fields=['statut', 'date_soumission_maire'])
+    
+    User = get_user_model()
+    maires = User.objects.filter(role='MAIRE', is_active=True)
+    for maire in maires:
+        Notification.objects.create(
+            user=maire,
+            title='Nouveau dossier à approuver',
+            message=f'Le dossier #{dossier.id} est prêt pour votre approbation.',
+            data={'dossier_id': str(dossier.id)}
+        )
+    return Response({'message': 'Dossier soumis au Maire.', 'statut': dossier.statut})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsMaire])
+def maire_approuver(request, dossier_id):
+    dossier = get_object_or_404(Dossier, id=dossier_id)
+    if dossier.statut != 'EN_APPROBATION':
+        return Response({'error': 'Le dossier n\'est pas en attente d\'approbation.'}, status=400)
+    dossier.statut = 'APPROUVE'
+    dossier.decision_maire = request.data.get('note', '')
+    dossier.date_decision = timezone.now()
+    dossier.save(update_fields=['statut', 'decision_maire', 'date_decision'])
+    
+    Notification.objects.create(
+        user=dossier.citizen,
+        title='Votre dossier a été approuvé',
+        message=f'Votre dossier #{dossier.id} a été approuvé par le Maire.',
+        data={'dossier_id': str(dossier.id)}
+    )
+    return Response({'message': 'Dossier approuvé. Demandeur notifié.', 'statut': dossier.statut})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsMaire])
+def maire_rejeter(request, dossier_id):
+    motif = request.data.get('motif', '').strip()
+    if not motif:
+        return Response({'error': 'Un motif de rejet est obligatoire.'}, status=400)
+    dossier = get_object_or_404(Dossier, id=dossier_id)
+    if dossier.statut != 'EN_APPROBATION':
+        return Response({'error': 'Le dossier n\'est pas en attente d\'approbation.'}, status=400)
+    dossier.statut = 'REJETE'
+    dossier.decision_maire = motif
+    dossier.date_decision = timezone.now()
+    dossier.save(update_fields=['statut', 'decision_maire', 'date_decision'])
+    
+    Notification.objects.create(
+        user=dossier.citizen,
+        title='Votre dossier a été rejeté',
+        message=f'Votre dossier #{dossier.id} a été rejeté. Motif : {motif}',
+        data={'dossier_id': str(dossier.id)}
+    )
+    return Response({'message': 'Dossier rejeté. Demandeur notifié.', 'statut': dossier.statut, 'motif': motif})

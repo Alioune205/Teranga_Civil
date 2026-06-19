@@ -23,6 +23,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         CIVIL_ADMIN = 'civil_admin', 'Administrateur de mairie'
         CIVIL_ADMIN_SUPERVISOR = 'civil_admin_supervisor', 'Administrateur général de mairie'
         SUPER_ADMIN = 'super_admin', 'Super administrateur'
+        MAIRE = 'MAIRE', 'Maire'
 
     class AgentCapability(models.TextChoices):
         RECEPTION = 'reception', 'Réception'
