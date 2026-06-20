@@ -88,9 +88,6 @@ class Command(BaseCommand):
             roles_to_create = [
                 {"email": f"supervisor.{slug}@test.local", "role": User.Role.CIVIL_ADMIN_SUPERVISOR, "caps": []},
                 {"email": f"civiladmin.{slug}@test.local", "role": User.Role.CIVIL_ADMIN, "caps": []},
-                {"email": f"agent.reception.{slug}@test.local", "role": User.Role.AGENT, "caps": ["reception"]},
-                {"email": f"agent.verification.{slug}@test.local", "role": User.Role.AGENT, "caps": ["verification"]},
-                {"email": f"agent.approval.{slug}@test.local", "role": User.Role.AGENT, "caps": ["approval"]},
                 {"email": f"agent.polyvalent.{slug}@test.local", "role": User.Role.AGENT, "caps": ["reception", "verification", "approval"]},
             ]
             
@@ -112,28 +109,6 @@ class Command(BaseCommand):
                 if rc["role"] == User.Role.AGENT:
                     all_agents.append(user)
 
-            # Extra agents for break/dispatch testing
-            break_agent, _ = User.objects.update_or_create(
-                email=f"agent.break.{slug}@test.local",
-                defaults={
-                    "first_name": "Agent", "last_name": "EnPause", "role": User.Role.AGENT, "agent_capabilities": ["reception"],
-                    "commune": commune, "is_verified": True, "is_on_break": True, "break_started_at": now - timedelta(minutes=45)
-                }
-            )
-            break_agent.set_password("pass")
-            break_agent.save()
-            users_created += 1
-            
-            nodispatch_agent, _ = User.objects.update_or_create(
-                email=f"agent.nodispatch.{slug}@test.local",
-                defaults={
-                    "first_name": "Agent", "last_name": "NoDispatch", "role": User.Role.AGENT, "agent_capabilities": ["reception"],
-                    "commune": commune, "is_verified": True, "is_dispatch_eligible": False
-                }
-            )
-            nodispatch_agent.set_password("pass")
-            nodispatch_agent.save()
-            users_created += 1
 
         self.stdout.write(f"Créé/Mis à jour {users_created} utilisateurs internes.")
 

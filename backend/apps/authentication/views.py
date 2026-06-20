@@ -531,3 +531,56 @@ class SuperAdminPasswordResetView(GenericAPIView):
 
         return success_response(message="Votre mot de passe a été réinitialisé avec succès et toutes les sessions actives ont été déconnectées.")
 
+
+class ChangePasswordView(GenericAPIView):
+    """
+    POST /api/auth/change-password/
+    
+    Allow an authenticated user to change their password or PIN.
+    """
+    serializer_class = __import__('apps.authentication.serializers', fromlist=['ChangePasswordSerializer']).ChangePasswordSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=['Auth'],
+        summary='Changer le mot de passe / PIN',
+        description='Modifie le mot de passe de l\'utilisateur connecté.',
+        responses={
+            200: OpenApiResponse(description='Mot de passe modifié avec succès.'),
+            400: OpenApiResponse(description='Ancien mot de passe incorrect ou données invalides.'),
+        },
+    )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        old_password = serializer.validated_data['old_password']
+        new_password = serializer.validated_data['new_password']
+
+        if not user.check_password(old_password):
+            return error_response(
+                message='L\'ancien mot de passe est incorrect.',
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new_password)
+        user.save()
+
+        # Optionally log the action
+        ip_address = request.META.get('REMOTE_ADDR')
+        AuditLog = __import__('apps.audit_logs.models', fromlist=['AuditLog']).AuditLog
+        try:
+            AuditLog.log(
+                user=user,
+                action=AuditLog.Action.UPDATE,
+                resource_type='user',
+                resource_id=user.id,
+                details={'action': 'change_password'},
+                ip_address=ip_address
+            )
+        except Exception:
+            pass
+
+        return success_response(message='Mot de passe modifié avec succès.')
+

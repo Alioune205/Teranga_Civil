@@ -200,7 +200,7 @@ export default function FormulaireAutorisationConstruire({ citoyenId, citoyen: c
 
       toast({
         title: 'Succès',
-        description: "La demande d'autorisation de construire a été soumise avec succès.",
+        description: 'Dossier créé et envoyé au Superviseur pour approbation.',
         className: 'bg-emerald-50 text-emerald-900 border-emerald-200'
       });
 

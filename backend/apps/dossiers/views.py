@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from apps.notifications.models import Notification
-from .permissions import IsAgent, IsMaire
+from .permissions import IsAgent, IsSuperviseur
 
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
 
@@ -53,7 +53,7 @@ class DossierViewSet(viewsets.ModelViewSet):
     Citizens see their own dossiers; agents see dossiers from their commune.
     """
     http_method_names = ['get', 'post', 'patch', 'delete']
-    filterset_fields = ['type', 'status', 'commune']
+    filterset_fields = ['type', 'status', 'statut', 'commune']
     search_fields = ['reference', 'citizen__first_name', 'citizen__last_name']
     ordering_fields = ['created_at', 'submitted_at', 'status']
     ordering = ['-created_at']
@@ -147,20 +147,35 @@ class DossierViewSet(viewsets.ModelViewSet):
                                 f"Divergence RegistreCivil/Citoyen pour le dossier {dossier.reference}. "
                                 f"Champ: {champ_meta}. Citoyen: {valeur_citoyen}. Registre: {valeur_str}."
                             )
-                            # Log détaillé
-                            from apps.audit_logs.models import AuditLog
-                            AuditLog.log(
-                                user=request.user,
-                                action=AuditLog.Action.UPDATE,
-                                resource_type='dossier_divergence',
-                                resource_id=dossier.id,
-                                details={
-                                    'field': champ_meta,
-                                    'citizen_value': valeur_citoyen,
-                                    'registry_value': valeur_str
-                                }
-                            )
+
+                # Extraction prénoms / noms pour PDF et mobile
+                def split_name(full_name):
+                    parts = [p for p in str(full_name).strip().split() if p]
+                    if len(parts) > 1:
+                        return " ".join(parts[:-1]), parts[-1]
+                    return "", full_name
+
+                if 'nom_complet_personne' in dossier.metadata and not dossier.metadata.get('nom_enfant'):
+                    prenoms, nom = split_name(dossier.metadata['nom_complet_personne'])
+                    dossier.metadata['prenoms_enfant'] = prenoms
+                    dossier.metadata['nom_enfant'] = nom
+                    metadata_mise_a_jour = True
                 
+                if 'nom_pere' in dossier.metadata and not dossier.metadata.get('prenom_pere'):
+                    prenoms, nom = split_name(dossier.metadata['nom_pere'])
+                    dossier.metadata['prenom_pere'] = prenoms
+                    dossier.metadata['nom_pere'] = nom
+                    metadata_mise_a_jour = True
+                
+                if 'nom_mere' in dossier.metadata and not dossier.metadata.get('prenom_mere'):
+                    prenoms, nom = split_name(dossier.metadata['nom_mere'])
+                    dossier.metadata['prenom_mere'] = prenoms
+                    dossier.metadata['nom_mere'] = nom
+                    metadata_mise_a_jour = True
+
+                dossier.metadata['registre_verifie'] = True
+                metadata_mise_a_jour = True
+
                 if metadata_mise_a_jour:
                     dossier.save(update_fields=['metadata'])
             
@@ -625,9 +640,9 @@ class DossierViewSet(viewsets.ModelViewSet):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsAgent])
-def agent_soumettre_au_maire(request, dossier_id):
+def agent_soumettre_au_superviseur(request, dossier_id):
     dossier = get_object_or_404(Dossier, id=dossier_id)
-    if dossier.agent_traitant != request.user:
+    if dossier.assigned_agent != request.user and dossier.agent_traitant != request.user:
         return Response({'error': 'Ce dossier ne vous est pas assigné.'}, status=403)
     if dossier.statut not in ['EN_COURS', 'EN_ATTENTE']:
         return Response({'error': f'Statut actuel ({dossier.statut}) invalide pour cette action.'}, status=400)
@@ -636,19 +651,19 @@ def agent_soumettre_au_maire(request, dossier_id):
     dossier.save(update_fields=['statut', 'date_soumission_maire'])
     
     User = get_user_model()
-    maires = User.objects.filter(role='MAIRE', is_active=True)
-    for maire in maires:
+    superviseurs = User.objects.filter(role='civil_admin_supervisor', is_active=True)
+    for superviseur in superviseurs:
         Notification.objects.create(
-            user=maire,
+            user=superviseur,
             title='Nouveau dossier à approuver',
             message=f'Le dossier #{dossier.id} est prêt pour votre approbation.',
             data={'dossier_id': str(dossier.id)}
         )
-    return Response({'message': 'Dossier soumis au Maire.', 'statut': dossier.statut})
+    return Response({'message': 'Dossier soumis au Superviseur.', 'statut': dossier.statut})
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsMaire])
-def maire_approuver(request, dossier_id):
+@permission_classes([IsAuthenticated, IsSuperviseur])
+def superviseur_approuver(request, dossier_id):
     dossier = get_object_or_404(Dossier, id=dossier_id)
     if dossier.statut != 'EN_APPROBATION':
         return Response({'error': 'Le dossier n\'est pas en attente d\'approbation.'}, status=400)
@@ -657,17 +672,18 @@ def maire_approuver(request, dossier_id):
     dossier.date_decision = timezone.now()
     dossier.save(update_fields=['statut', 'decision_maire', 'date_decision'])
     
-    Notification.objects.create(
-        user=dossier.citizen,
-        title='Votre dossier a été approuvé',
-        message=f'Votre dossier #{dossier.id} a été approuvé par le Maire.',
-        data={'dossier_id': str(dossier.id)}
-    )
-    return Response({'message': 'Dossier approuvé. Demandeur notifié.', 'statut': dossier.statut})
+    if dossier.citizen:
+        Notification.objects.create(
+            user=dossier.citizen,
+            title='Votre dossier a été approuvé par le Superviseur.',
+            message=f'Votre dossier #{dossier.id} a été approuvé.',
+            data={'dossier_id': str(dossier.id)}
+        )
+    return Response({'message': 'Dossier approuvé.', 'statut': dossier.statut})
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsMaire])
-def maire_rejeter(request, dossier_id):
+@permission_classes([IsAuthenticated, IsSuperviseur])
+def superviseur_rejeter(request, dossier_id):
     motif = request.data.get('motif', '').strip()
     if not motif:
         return Response({'error': 'Un motif de rejet est obligatoire.'}, status=400)
@@ -679,10 +695,11 @@ def maire_rejeter(request, dossier_id):
     dossier.date_decision = timezone.now()
     dossier.save(update_fields=['statut', 'decision_maire', 'date_decision'])
     
-    Notification.objects.create(
-        user=dossier.citizen,
-        title='Votre dossier a été rejeté',
-        message=f'Votre dossier #{dossier.id} a été rejeté. Motif : {motif}',
-        data={'dossier_id': str(dossier.id)}
-    )
-    return Response({'message': 'Dossier rejeté. Demandeur notifié.', 'statut': dossier.statut, 'motif': motif})
+    if dossier.citizen:
+        Notification.objects.create(
+            user=dossier.citizen,
+            title=f'Votre dossier a été rejeté. Motif : {motif}',
+            message=f'Votre dossier #{dossier.id} a été rejeté.',
+            data={'dossier_id': str(dossier.id)}
+        )
+    return Response({'message': 'Dossier rejeté.', 'statut': dossier.statut, 'motif': motif})

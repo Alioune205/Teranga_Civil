@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useDossiers } from '@/hooks/useDossiers';
-import { getDossiers, patchDossier, assignDossier, approveDossier, rejectDossier, downloadPdf, downloadCopieLitterale } from '@/api/dossiers';
+import { getDossiers, patchDossier, assignDossier, approveDossier, rejectDossier, downloadPdf, downloadCopieLitterale, approuverSuperviseur, rejeterSuperviseur } from '@/api/dossiers';
 import { getCommuneList } from '@/api/communes';
 import { getUserList } from '@/api/users';
 import { attributionApi } from '@/services/attributionApi';
@@ -66,6 +66,7 @@ const STATUS_OPTIONS = [
   { value: 'approved', label: 'Approuvé' },
   { value: 'rejected', label: 'Rejeté' },
   { value: 'completed', label: 'Terminé' },
+  { value: 'en_approbation', label: 'En attente d\'approbation' },
 ];
 
 const TYPE_OPTIONS = [
@@ -135,6 +136,10 @@ export default function Dossiers() {
   const [dossierToApprove, setDossierToApprove] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(null);
   const [pdfSuccessDossier, setPdfSuccessDossier] = useState(null);
+  const [massApproveModalOpen, setMassApproveModalOpen] = useState(false);
+  const [massApproveLoading, setMassApproveLoading] = useState(false);
+  
+  const dossiersEnApprobation = data.results?.filter(d => d.statut === 'EN_APPROBATION') || [];
 
   // Charger les communes
   useEffect(() => {
@@ -294,11 +299,20 @@ export default function Dossiers() {
   };
 
   const handleReject = async () => {
-    if (!rejectionReason || rejectionReason.length < 20 || !selectedDossier) return;
+    // Si c'est le superviseur, la règle est "motif non vide"
+    const isSupervisor = role === 'civil_admin_supervisor';
+    const isValid = isSupervisor ? rejectionReason.trim().length > 0 : rejectionReason.length >= 20;
+    
+    if (!isValid || !selectedDossier) return;
     setActionLoading(true);
     try {
-      await rejectDossier(selectedDossier.id, rejectionReason);
-      toast({ title: 'Demande rejetée', description: `${selectedDossier.reference} a été rejetée.`, variant: 'success' });
+      if (isSupervisor) {
+        await rejeterSuperviseur(selectedDossier.id, rejectionReason);
+        toast({ title: 'Dossier rejeté.', variant: 'success' });
+      } else {
+        await rejectDossier(selectedDossier.id, rejectionReason);
+        toast({ title: 'Demande rejetée', description: `${selectedDossier.reference} a été rejetée.`, variant: 'success' });
+      }
       setRejectModalOpen(false);
       setRejectionReason('');
       setSelectedDossier(null);
@@ -307,6 +321,38 @@ export default function Dossiers() {
       toast({ title: 'Erreur', description: 'Impossible de rejeter la demande.', variant: 'destructive' });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleSuperviseurApprove = async (dossier) => {
+    setActionLoading(true);
+    try {
+      await approuverSuperviseur(dossier.id, "");
+      toast({ title: 'Dossier approuvé.', variant: 'success' });
+      refresh();
+    } catch (error) {
+      toast({ title: 'Erreur', description: 'Impossible d\'approuver la demande.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMassApprove = async () => {
+    setMassApproveLoading(true);
+    let successCount = 0;
+    try {
+      for (const dossier of dossiersEnApprobation) {
+        await approuverSuperviseur(dossier.id, "");
+        successCount++;
+      }
+      toast({ title: 'Succès', description: `${successCount} dossiers approuvés avec succès.`, variant: 'success' });
+      setMassApproveModalOpen(false);
+      refresh();
+    } catch (error) {
+      toast({ title: 'Erreur', description: 'Erreur lors de l\'approbation en masse.', variant: 'destructive' });
+      refresh();
+    } finally {
+      setMassApproveLoading(false);
     }
   };
 
@@ -335,11 +381,20 @@ export default function Dossiers() {
       {
         accessorKey: 'status',
         header: 'Statut',
-        cell: ({ row }) => (
-          <span className="text-sm font-medium">
-            {STATUT_LABELS[row.original.status] || <StatusBadge status={row.original.status} />}
-          </span>
-        ),
+        cell: ({ row }) => {
+          if (row.original.statut === 'EN_APPROBATION') {
+            return (
+              <span className="text-sm font-medium">
+                <StatusBadge status="en_approbation" />
+              </span>
+            );
+          }
+          return (
+            <span className="text-sm font-medium">
+              {STATUT_LABELS[row.original.status] || <StatusBadge status={row.original.status} />}
+            </span>
+          );
+        },
       },
       {
         accessorKey: 'citizen',
@@ -405,6 +460,31 @@ export default function Dossiers() {
                 >
                   Traiter
                 </Button>
+              )}
+              {role === 'civil_admin_supervisor' && dossier.statut === 'EN_APPROBATION' && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-success text-success hover:bg-success hover:text-white"
+                    onClick={() => handleSuperviseurApprove(dossier)}
+                    disabled={actionLoading}
+                  >
+                    Approuver
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-danger text-danger hover:bg-danger hover:text-white"
+                    onClick={() => {
+                      setSelectedDossier(dossier);
+                      setRejectModalOpen(true);
+                    }}
+                    disabled={actionLoading}
+                  >
+                    Rejeter
+                  </Button>
+                </>
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -544,11 +624,23 @@ export default function Dossiers() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-secondary">Banque des Demandes</h1>
-        <p className="text-sm text-text-400 mt-1">
-          {data.count || 0} demande{(data.count || 0) > 1 ? 's' : ''} enregistrée{(data.count || 0) > 1 ? 's' : ''}
-        </p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-secondary">Banque des Demandes</h1>
+          <p className="text-sm text-text-400 mt-1">
+            {data.count || 0} demande{(data.count || 0) > 1 ? 's' : ''} enregistrée{(data.count || 0) > 1 ? 's' : ''}
+          </p>
+        </div>
+        
+        {role === 'civil_admin_supervisor' && dossiersEnApprobation.length > 0 && (
+          <Button 
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => setMassApproveModalOpen(true)}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Tout approuver ({dossiersEnApprobation.length})
+          </Button>
+        )}
       </div>
 
       {/* Barre de filtres */}
@@ -564,8 +656,14 @@ export default function Dossiers() {
             />
           </div>
           <Select
-            value={params.status || ''}
-            onValueChange={(val) => updateParams({ status: val })}
+            value={params.status || (params.statut === 'EN_APPROBATION' ? 'en_approbation' : '')}
+            onValueChange={(val) => {
+              if (val === 'en_approbation') {
+                updateParams({ status: '', statut: 'EN_APPROBATION' });
+              } else {
+                updateParams({ status: val, statut: '' });
+              }
+            }}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Tous les statuts" />
@@ -802,7 +900,7 @@ export default function Dossiers() {
             <Button
               variant="destructive"
               onClick={handleReject}
-              disabled={rejectionReason.length < 20 || actionLoading}
+              disabled={actionLoading || (role === 'civil_admin_supervisor' ? rejectionReason.trim().length === 0 : rejectionReason.length < 20)}
             >
               {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmer le rejet
@@ -832,6 +930,31 @@ export default function Dossiers() {
             >
               {actionLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmer la validation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Tout Approuver */}
+      <Dialog open={massApproveModalOpen} onOpenChange={setMassApproveModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Approbation en masse</DialogTitle>
+            <DialogDescription>
+              Vous allez approuver {dossiersEnApprobation.length} dossiers en attente. Confirmer ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 pt-4 border-t">
+            <Button variant="outline" onClick={() => setMassApproveModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleMassApprove}
+              disabled={massApproveLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {massApproveLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmer
             </Button>
           </DialogFooter>
         </DialogContent>

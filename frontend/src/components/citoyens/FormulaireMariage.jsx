@@ -146,7 +146,7 @@ export default function FormulaireMariage({ onSuccess, onCancel }) {
 
       toast({
         title: 'Succès',
-        description: "L'extrait de mariage a été enregistré avec succès.",
+        description: 'Dossier créé et envoyé au Superviseur pour approbation.',
         className: 'bg-emerald-50 text-emerald-900 border-emerald-200'
       });
 

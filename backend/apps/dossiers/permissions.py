@@ -1,10 +1,17 @@
 from rest_framework.permissions import BasePermission
 
 class IsAgent(BasePermission):
+    """Seul l'agent polyvalent peut traiter et soumettre un dossier."""
     def has_permission(self, request, view):
-        # We check both to match the DB value ('agent') and the user's requested string ('AGENT')
-        return request.user.is_authenticated and request.user.role in ['AGENT', 'agent']
+        return (
+            request.user.is_authenticated and
+            request.user.role == 'agent'
+        )
 
-class IsMaire(BasePermission):
+class IsSuperviseur(BasePermission):
+    """Seul le Superviseur peut approuver ou rejeter un dossier."""
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'MAIRE'
+        return (
+            request.user.is_authenticated and
+            request.user.role == 'civil_admin_supervisor'
+        )

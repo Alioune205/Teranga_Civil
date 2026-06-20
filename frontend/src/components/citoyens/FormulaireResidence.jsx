@@ -199,7 +199,7 @@ export default function FormulaireResidence({ citoyenId, citoyen: citoyenProp, p
 
       toast({
         title: 'Succès',
-        description: 'Le certificat de résidence a été généré avec succès.',
+        description: 'Dossier créé et envoyé au Superviseur pour approbation.',
         className: 'bg-emerald-50 text-emerald-900 border-emerald-200'
       });
 

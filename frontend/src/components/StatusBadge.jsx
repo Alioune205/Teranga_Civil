@@ -18,6 +18,11 @@ const STATUS_CONFIG = {
     className: 'bg-[#1D4ED8] text-white border-[#1D4ED8]',
     Icon: Eye,
   },
+  en_approbation: {
+    label: 'En attente',
+    className: 'bg-[#F97316] text-white border-[#F97316]',
+    Icon: Clock,
+  },
   approved: {
     label: 'Approuvé',
     className: 'bg-[#10B981] text-white border-[#10B981]',

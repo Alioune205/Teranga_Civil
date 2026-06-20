@@ -194,7 +194,7 @@ export default function FormulaireRegularisation({ citoyenId, citoyen: citoyenPr
 
       toast({
         title: 'Succès',
-        description: 'La demande de régularisation a été soumise avec succès.',
+        description: 'Dossier créé et envoyé au Superviseur pour approbation.',
         className: 'bg-emerald-50 text-emerald-900 border-emerald-200'
       });
 

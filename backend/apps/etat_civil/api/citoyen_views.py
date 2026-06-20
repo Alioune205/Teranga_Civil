@@ -113,16 +113,16 @@ class CitoyenViewSet(viewsets.ModelViewSet):
                     metadata[f] = input_data[f]
         
         
-        # 1. Créer une Demande avec statut COMPLETED
+        # 1. Créer une Demande avec statut EN_APPROBATION
         dossier = Dossier.objects.create(
             type=data['type_document'],
-            status=Dossier.Status.COMPLETED,
+            status=Dossier.Status.IN_REVIEW,
+            statut='EN_APPROBATION',
             citoyen_guichet=citoyen,
             commune=citoyen.commune,
             notes=data.get('motif', ''),
             submitted_at=timezone.now(),
-            reviewed_at=timezone.now(),
-            completed_at=timezone.now(),
+            date_soumission_maire=timezone.now(),
             assigned_agent=request.user,
             metadata=metadata
         )
@@ -170,6 +170,22 @@ class CitoyenViewSet(viewsets.ModelViewSet):
             source_attribution='manuel',
             date_limite_traitement=timezone.now() + timezone.timedelta(days=1)
         )
+        
+        # 5. Déclencher la notification au Superviseur
+        from django.contrib.auth import get_user_model
+        from apps.notifications.models import Notification
+        User = get_user_model()
+        superviseurs = User.objects.filter(
+            role='civil_admin_supervisor',
+            is_active=True
+        )
+        for superviseur in superviseurs:
+            Notification.objects.create(
+                user=superviseur,
+                title='Nouveau dossier Guichet Rapide à approuver',
+                message=f'Un dossier créé au guichet (#{dossier.id}) attend votre approbation.',
+                data={'dossier_id': str(dossier.id)}
+            )
         
         return Response({
             'demande_id': dossier.id,
