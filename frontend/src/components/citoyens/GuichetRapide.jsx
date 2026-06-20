@@ -136,14 +136,14 @@ export default function GuichetRapide({ open, onOpenChange, initialCitoyen = nul
       setStep(4); // Écran de succès
       toast({
         title: "Succès",
-        description: "Le document a été généré avec succès",
+        description: "Dossier créé et envoyé au Superviseur pour approbation.",
         className: "bg-emerald-50 text-emerald-900 border-emerald-200"
       });
 
-      // Auto download
-      if (res.pdf_url) {
-        downloadPdfForce(res.pdf_url, res.reference);
-      }
+      // Auto download desactivé car en attente d'approbation
+      // if (res.pdf_url) {
+      //   downloadPdfForce(res.pdf_url, res.reference);
+      // }
 
     } catch (error) {
       let errorMessage = "Erreur lors du traitement";
@@ -422,8 +422,8 @@ export default function GuichetRapide({ open, onOpenChange, initialCitoyen = nul
               <Check className="h-10 w-10 text-emerald-500" />
             </div>
 
-            <h2 className="text-2xl font-bold text-text-100 font-jakarta mb-2">Document généré avec succès !</h2>
-            <p className="text-text-400 mb-6">Le document a été validé et est prêt à être imprimé.</p>
+            <h2 className="text-2xl font-bold text-text-100 font-jakarta mb-2">Demande envoyée avec succès !</h2>
+            <p className="text-text-400 mb-6">Dossier créé et envoyé au Superviseur pour approbation.</p>
 
             <div className="bg-layer-2 border border-border-strong rounded-xl p-6 w-full max-w-sm mb-8">
               <p className="text-sm text-text-400 uppercase tracking-wider font-semibold mb-1">Référence</p>
@@ -431,21 +431,7 @@ export default function GuichetRapide({ open, onOpenChange, initialCitoyen = nul
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-              <Button
-                onClick={handleDownloadPdf}
-                disabled={loading}
-                className="flex-1 bg-primary text-white hover:bg-primary-hover"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Télécharger PDF
-              </Button>
-              <Button
-                onClick={() => window.print()}
-                className="flex-1 bg-layer-3 text-text-100 border border-border-strong hover:bg-layer-4"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimer
-              </Button>
+              {/* Boutons de téléchargement masqués car en attente d'approbation */}
             </div>
 
             <Button variant="ghost" onClick={() => onOpenChange(false)} className="mt-6 text-text-400">

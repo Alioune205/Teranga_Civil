@@ -60,4 +60,17 @@ export const downloadCopieLitterale = async (id) => {
   return response.data;
 };
 
+export const soumettreSuperviseur = async (id) => {
+  const response = await axiosClient.post(`/api/dossiers/${id}/soumettre-superviseur/`);
+  return response.data;
+};
 
+export const approuverSuperviseur = async (id, note = '') => {
+  const response = await axiosClient.post(`/api/dossiers/${id}/approuver/`, { note });
+  return response.data;
+};
+
+export const rejeterSuperviseur = async (id, motif) => {
+  const response = await axiosClient.post(`/api/dossiers/${id}/rejeter/`, { motif });
+  return response.data;
+};

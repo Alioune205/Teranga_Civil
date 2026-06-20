@@ -197,7 +197,7 @@ export default function FormulaireMutationParcelle({ citoyenId, citoyen: citoyen
 
       toast({
         title: 'Succès',
-        description: "La demande de mutation de parcelle a été soumise avec succès.",
+        description: 'Dossier créé et envoyé au Superviseur pour approbation.',
         className: 'bg-emerald-50 text-emerald-900 border-emerald-200'
       });
 

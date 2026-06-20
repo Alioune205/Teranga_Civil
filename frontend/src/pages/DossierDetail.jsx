@@ -1,7 +1,7 @@
 // src/pages/DossierDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getDossier, patchDossier, reviewDossier, approveDossier, rejectDossier, completeDossier, downloadPdf } from '@/api/dossiers';
+import { getDossier, patchDossier, reviewDossier, approveDossier, rejectDossier, completeDossier, downloadPdf, soumettreSuperviseur } from '@/api/dossiers';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -174,6 +174,19 @@ export default function DossierDetail() {
       toast({ title: 'Succès', description: 'Statut mis à jour.', variant: 'success' });
     } catch (err) {
       toast({ title: 'Erreur', description: "Impossible de modifier le statut.", variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSubmitToSupervisor = async () => {
+    try {
+      setActionLoading(true);
+      await soumettreSuperviseur(dossier.id);
+      await fetchDossier();
+      toast({ title: 'Succès', description: 'Dossier envoyé au Superviseur pour approbation.', variant: 'success' });
+    } catch (err) {
+      toast({ title: 'Erreur', description: err.response?.data?.error || "Impossible d'envoyer au Superviseur.", variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -533,6 +546,32 @@ export default function DossierDetail() {
               <InfoRow label="Créé le" value={formatDate(dossier.created_at)} />
               <InfoRow label="Soumis le" value={formatDate(dossier.submitted_at)} />
               <InfoRow label="Terminé le" value={formatDate(dossier.completed_at)} />
+
+              {/* Décision Superviseur */}
+              {dossier.statut === 'APPROUVE' && (
+                <div className="mt-4 p-3 bg-success/10 border border-success/20 rounded-lg">
+                  <p className="text-sm font-semibold text-success flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" /> Approuvé par le Superviseur
+                  </p>
+                  <p className="text-xs text-text-400 mt-1">le {formatDate(dossier.date_decision)}</p>
+                </div>
+              )}
+              {dossier.statut === 'REJETE' && (
+                <div className="mt-4 p-3 bg-danger/10 border border-danger/20 rounded-lg">
+                  <p className="text-sm font-semibold text-danger flex items-center gap-2">
+                    <XCircle className="h-4 w-4" /> Rejeté par le Superviseur
+                  </p>
+                  <p className="text-xs text-text-400 mt-1 mb-1">Motif: {dossier.decision_maire}</p>
+                  <p className="text-xs text-text-400">le {formatDate(dossier.date_decision)}</p>
+                </div>
+              )}
+              {dossier.statut === 'EN_APPROBATION' && (
+                <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                  <p className="text-sm font-semibold text-orange-600 flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> En attente de validation du Superviseur
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -811,12 +850,29 @@ export default function DossierDetail() {
               </>
             )}
 
+            {['EN_COURS', 'EN_ATTENTE'].includes(dossier.statut) && (
+              <Button
+                onClick={handleSubmitToSupervisor}
+                disabled={actionLoading}
+                className="gap-2"
+                variant="secondary"
+              >
+                {actionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PlayCircle className="h-4 w-4" />
+                )}
+                Envoyer au Superviseur
+              </Button>
+            )}
+
             {['approved', 'validated', 'generated'].includes(dossier.status) && (
               <>
                 <Button
                   onClick={() => handleStatusChange('completed')}
-                  disabled={actionLoading}
-                  className="gap-2"
+                  disabled={actionLoading || dossier.statut !== 'APPROUVE'}
+                  className={`gap-2 ${dossier.statut !== 'APPROUVE' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={dossier.statut !== 'APPROUVE' ? 'En attente d\'approbation du Superviseur' : ''}
                 >
                   {actionLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

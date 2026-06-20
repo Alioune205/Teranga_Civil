@@ -11,7 +11,9 @@ export const useWebSocket = () => {
         const connect = () => {
             // L'URL WS dépend de l'environnement, ici configuré pour Django Channels local
             const token = localStorage.getItem('access_token');
-            const wsUrl = `ws://localhost:8000/ws/notifications/?token=${token}`;
+            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+            const baseWsUrl = baseUrl.replace('http', 'ws').replace('/api', '');
+            const wsUrl = `${baseWsUrl}/ws/notifications/?token=${token}`;
             
             ws.current = new WebSocket(wsUrl);
 
