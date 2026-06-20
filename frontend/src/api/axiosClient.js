@@ -79,8 +79,9 @@ axiosClient.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post('http://localhost:8000/api/auth/refresh/', {
-          refresh: refreshToken,
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+        const response = await axios.post(`${baseUrl}/auth/refresh/`, {
+          refresh: refreshToken
         });
 
         const { access } = response.data.data;
